@@ -46,7 +46,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onEnterDemo }) => {
   const [resetSent, setResetSent] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
-  const [googleEnabled, setGoogleEnabled] = useState(false);
+  /** null while we still don't know whether the Google provider is configured. */
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const [autoConfirm, setAutoConfirm] = useState(false);
 
   const isLogin = mode === 'login';
@@ -148,6 +149,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onEnterDemo }) => {
 
     if (!isSupabaseConfigured) {
       setError('החיבור ל-Supabase לא מוגדר. היכנס למצב דמו כדי לראות את המערכת.');
+      return;
+    }
+
+    // Say what is actually missing instead of bouncing the user to Supabase's
+    // raw "Unsupported provider" JSON page.
+    if (googleEnabled === false) {
+      setError(
+        'התחברות עם Google עדיין לא הופעלה. יש להגדיר Google כ-Provider בלוח הבקרה של Supabase (Authentication → Providers), ואז הכפתור יעבוד מיד. בינתיים אפשר להתחבר עם אימייל וסיסמה.'
+      );
       return;
     }
 
@@ -387,20 +397,18 @@ export const AuthView: React.FC<AuthViewProps> = ({ onEnterDemo }) => {
                 </p>
               )}
 
-              {/* Divider — only when there is another method to offer. */}
-              {googleEnabled && (
-                <div className="flex items-center gap-3.5 my-3.5">
-                  <span className="flex-1 h-[1px] bg-gradient-to-l from-[#7dd3fc]/30 to-transparent" />
-                  <span className="text-xs font-medium text-[#c7e1ff]/60 whitespace-nowrap">
-                    או התחבר באמצעות
-                  </span>
-                  <span className="flex-1 h-[1px] bg-gradient-to-r from-[#7dd3fc]/30 to-transparent" />
-                </div>
-              )}
+              {/* Divider */}
+              <div className="flex items-center gap-3.5 my-3.5">
+                <span className="flex-1 h-[1px] bg-gradient-to-l from-[#7dd3fc]/30 to-transparent" />
+                <span className="text-xs font-medium text-[#c7e1ff]/60 whitespace-nowrap">
+                  או התחבר באמצעות
+                </span>
+                <span className="flex-1 h-[1px] bg-gradient-to-r from-[#7dd3fc]/30 to-transparent" />
+              </div>
 
-              {/* Google Button — hidden until the provider is configured, so it
-                  never dead-ends on a "provider is not enabled" error page. */}
-              {googleEnabled && (
+              {/* Google Button. Always shown. When the provider is not yet
+                  configured the click explains what is missing rather than
+                  dead-ending on Supabase's raw error page. */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
@@ -417,7 +425,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onEnterDemo }) => {
                 </span>
                 <span>התחבר באמצעות Google</span>
               </button>
-              )}
 
               {/* Demo entry */}
               <div className="mt-3 pt-3.5 border-t border-white/[0.08] flex flex-col gap-2">
