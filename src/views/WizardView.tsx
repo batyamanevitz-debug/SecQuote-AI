@@ -404,7 +404,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto">
+      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 lg:pb-8">
         {/* Stepper Navigation */}
       <div className="flex items-start my-4 sm:my-6 px-1 max-w-2xl mx-auto w-full">
         {stepsHeader.map((s, i) => {

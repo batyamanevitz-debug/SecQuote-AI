@@ -199,7 +199,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto">
+      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 lg:pb-8">
         {/* Real User Profile Status Ribbon */}
         <div className="mb-4 sm:mb-5 p-3 sm:p-4 rounded-2xl border border-[#22d3ee]/25 bg-gradient-to-r from-[#172a48]/75 via-[#0e1b33]/85 to-[#0c1628]/75 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-[0_14px_34px_rgba(2,8,23,0.65)]">
           <div className="flex items-center gap-3 min-w-0">

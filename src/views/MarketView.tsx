@@ -51,7 +51,7 @@ export const MarketView: React.FC<MarketViewProps> = ({ onOpenMobileMenu }) => {
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto">
+      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 lg:pb-8">
         <div className="flex flex-1 flex-col lg:flex-row items-stretch gap-4 mt-2 sm:mt-3">
         {/* Left Card: Market Benchmarks */}
         <section className="flex-1 lg:flex-[1.1] min-w-0 w-full flex flex-col p-4 sm:p-6 rounded-3xl border border-[#7dd3fc]/15 bg-gradient-to-br from-[#101a30]/80 to-[#090f1e]/90 shadow-[0_28px_60px_-34px_rgba(2,8,23,0.95)]">

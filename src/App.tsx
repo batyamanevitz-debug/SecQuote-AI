@@ -576,11 +576,9 @@ export default function App() {
           )}
         </main>
 
-        {/* Mobile + tablet navigation.
-            The bar itself is fixed, so content scrolls the full height behind
-            it; this spacer keeps the last row of content clear of the pill. */}
-        {currentView !== 'sow_doc' && <div className="lg:hidden flex-none h-24" aria-hidden="true" />}
-
+        {/* Mobile + tablet navigation. The pill floats over the content — no
+            reserved strip beneath it. Each view carries `pb-28` so the last
+            row can still scroll clear of the bar. */}
         {currentView !== 'sow_doc' && (
           <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,520px)] h-[68px] rounded-full bg-[#0b1220]/92 border border-[#7dd3fc]/20 backdrop-blur-2xl px-1.5 flex items-center justify-around shadow-[0_18px_45px_-10px_rgba(2,8,23,0.95),0_0_30px_-18px_rgba(34,211,238,0.7)]">
             {navItems.slice(0, 2).map((item) => {
