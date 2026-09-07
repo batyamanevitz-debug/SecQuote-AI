@@ -111,7 +111,10 @@ export const Header: React.FC<HeaderProps> = ({
                   className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent"
                   onClick={() => setShowNotifications(false)}
                 />
-                <div className="absolute left-0 mt-2 z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-[#22d3ee]/40 bg-[#091124] shadow-[0_24px_50px_-10px_rgba(0,0,0,0.95)] backdrop-blur-2xl p-4">
+                {/* On phones the panel is pinned to the viewport, not to the
+                    bell: anchoring it to the button pushed it off the edge in
+                    RTL. From sm up it hangs under the bell as before. */}
+                <div className="fixed top-[68px] inset-x-3 w-auto sm:absolute sm:top-auto sm:inset-x-auto sm:left-0 sm:mt-2 sm:w-96 z-50 rounded-2xl border border-[#22d3ee]/40 bg-[#091124] shadow-[0_24px_50px_-10px_rgba(0,0,0,0.95)] backdrop-blur-2xl p-4">
                   <div className="flex items-center justify-between pb-3 border-b border-[#7dd3fc]/15 mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-extrabold text-[#f4f9ff]">
