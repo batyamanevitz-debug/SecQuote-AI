@@ -377,7 +377,7 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
         </div>
 
         {/* Hidden 5-Page Full Export Container */}
-        <div style={{ position: "fixed", left: "-99999px", top: 0, opacity: 0, pointerEvents: "none" }}>
+        <div style={{ position: "fixed", left: "-99999px", top: 0, opacity: 0, pointerEvents: "none", width: 794 }}>
           <div ref={fullExportRef}>
             <ElixSowDocument
               quote={quote}

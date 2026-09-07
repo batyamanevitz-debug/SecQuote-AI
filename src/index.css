@@ -91,3 +91,61 @@
     padding: 20px !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Responsive proposal document.
+
+   The proposal is laid out as an A4 page (794px) because that is what the PDF
+   and Word exports capture. Those exports render from a hidden off-screen copy
+   that is always 794px wide, so it must keep the fixed layout.
+
+   These rules therefore key off the *document's own* width via a container
+   query rather than the viewport: the on-screen preview reflows on a phone
+   while the export copy, being 794px, never matches the query and is left
+   exactly as it was.
+--------------------------------------------------------------------------- */
+.sq-doc {
+  container-type: inline-size;
+  container-name: sqdoc;
+}
+
+@container sqdoc (max-width: 700px) {
+  /* A4 height leaves a screenful of blank paper on a phone. */
+  .sq-doc .pdf-page {
+    min-height: auto !important;
+    padding: 1.15rem !important;
+    font-size: 0.8rem;
+  }
+
+  /* The bleed banner's negative margins have to track the smaller padding,
+     otherwise it overhangs the page edge. */
+  .sq-doc .sq-bleed {
+    margin: -1.15rem -1.15rem 0 -1.15rem !important;
+    padding-inline: 1.15rem !important;
+    height: 3.75rem !important;
+  }
+  .sq-doc .sq-bleed span:first-child { font-size: 1.05rem !important; }
+  .sq-doc .sq-bleed span:last-child { font-size: 0.6rem !important; }
+
+  /* Label/value tables: the fixed label columns eat most of a 375px screen. */
+  .sq-doc [class*="grid-cols-[140px"],
+  .sq-doc [class*="grid-cols-[160px"] {
+    grid-template-columns: 5.5rem 1fr !important;
+  }
+  .sq-doc [class*="grid-cols-[1fr_180px"] { grid-template-columns: 1fr 5.5rem !important; }
+  .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: 1fr 3.5rem !important; }
+  .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 1.5rem 5rem 1fr !important; }
+
+  /* Tighten cell padding so values are not forced onto three lines. */
+  .sq-doc .pdf-page [class*="grid-cols-"] > div { padding: 0.45rem !important; }
+
+  /* Headline sizes tuned for the page, not the viewport. */
+  .sq-doc .pdf-page h1 { font-size: 1.15rem !important; line-height: 1.5 !important; }
+  .sq-doc .pdf-page h2 { font-size: 1rem !important; }
+  .sq-doc .pdf-page h3 { font-size: 0.85rem !important; }
+
+  /* The vertical rhythm was built for a full page. */
+  .sq-doc .pdf-page .py-12 { padding-block: 1.5rem !important; }
+  .sq-doc .pdf-page .mb-8 { margin-bottom: 1rem !important; }
+  .sq-doc .pdf-page .mb-6 { margin-bottom: 0.75rem !important; }
+}

@@ -152,7 +152,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   );
 
   return (
-    <div className="flex flex-col items-center gap-8 w-full text-[#0f172a]" dir="rtl" style={{ fontFamily: "'Heebo', sans-serif" }}>
+    <div className="sq-doc flex flex-col items-center gap-8 w-full text-[#0f172a]" dir="rtl" style={{ fontFamily: "'Heebo', sans-serif" }}>
       {/* ================= PAGE 1: שער (Cover Page) ================= */}
       {(activePage === 0 || activePage === 1) && (
         <div
@@ -161,7 +161,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
           className="pdf-page relative w-full max-w-[794px] min-h-[1123px] bg-white p-8 sm:p-12 shadow-2xl flex flex-col justify-between text-[#0f172a] text-right border border-slate-200"
         >
           {/* Top Banner - full width bleed */}
-          <div className="-mx-8 -mt-8 sm:-mx-12 sm:-mt-12 bg-[#0d6282] h-20 sm:h-24 flex items-center justify-between px-8 sm:px-12 text-white">
+          <div className="sq-bleed -mx-8 -mt-8 sm:-mx-12 sm:-mt-12 bg-[#0d6282] h-20 sm:h-24 flex items-center justify-between px-8 sm:px-12 text-white">
             <span className="font-sans text-2xl sm:text-3xl font-bold tracking-wide">
               {normalizedOrgName}
             </span>
