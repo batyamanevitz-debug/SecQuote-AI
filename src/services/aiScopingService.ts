@@ -1,4 +1,5 @@
 import { ScopeComponent, ProjectTemplate } from '../types';
+import { buildQuestionRun, plannedQuestionCount } from './questionBank';
 
 export interface ScopingConfig {
   categoryKey: 'infra' | 'app' | 'red' | 'mobile';
@@ -26,6 +27,10 @@ export interface AiScopingResponse {
     criticalSystems?: string;
   };
   components?: ScopeComponent[];
+  /** 1-based index of the question just asked. */
+  questionNumber?: number;
+  /** How many questions this template plans to ask. */
+  questionTotal?: number;
   isComplete: boolean;
   proposal?: {
     summary: string;
@@ -89,34 +94,21 @@ export function getInitialAiGreeting(
   }
 
   // First question based on template and category
-  let firstQuestion = '';
-  let options: string[] = [];
 
-  if (config.categoryKey === 'infra') {
-    firstQuestion = `שלום! אני עוזר ה-AI של SecQuote לאפיון וסקופינג מבדקי סייבר.
-קלטתי את הבחירה שלך: **${config.categoryName}**, במודל **${config.testType}**, על גבי **${envText}**, עם תבנית **${template.name}**.
+  // The run is assembled the same way the rest of the chat will be, so the
+  // opening message can honestly state how many questions are coming.
+  const run = buildQuestionRun(config, template);
+  const total = plannedQuestionCount(template);
+  const first = run[0];
 
-כדי לדייק את היקף העבודה, נתחיל בבסיס הרשת: **כמה כתובות IP חיצוניות/פנימיות וציוד רשת (Firewalls, Switches) נכללים בסקופ?**`;
-    options = ['עד 20 כתובות IP', '20-50 כתובות IP', '50-100 כתובות IP', 'מעל 100 כתובות IP / רשת מורכבת'];
-  } else if (config.categoryKey === 'app') {
-    firstQuestion = `שלום! אני עוזר ה-AI של SecQuote לאפיון וסקופינג מבדקי סייבר.
-קלטתי את הבחירה שלך: **${config.categoryName}**, במודל **${config.testType}**, על גבי **${envText}**, עם תבנית **${template.name}**.
+  const firstQuestion = `שלום! אני עוזר ה-AI של SecQuote לאפיון וסקופינג מבדקי סייבר.
 
-כדי להגדיר את היקף הבדיקה: **כמה תפקידי משתמשים שונים (Roles / RBAC) יש במערכת (למשל: Admin, Manager, User)? וכמה עמודים/מסכים עיקריים?**`;
-    options = ['1-2 תפקידים (עד 15 מסכים)', '3-4 תפקידים (עד 30 מסכים)', '5+ תפקידים כולל Super Admin', 'מערכת מרובת דיירים (Multi-Tenant)'];
-  } else if (config.categoryKey === 'mobile') {
-    firstQuestion = `שלום! אני עוזר ה-AI של SecQuote לאפיון וסקופינג מבדקי סייבר.
-קלטתי את הבחירה שלך: **${config.categoryName}**, במודל **${config.testType}**, על גבי **${envText}**, עם תבנית **${template.name}**.
+קלטתי את הבחירה שלך: **${config.categoryName}**, במודל **${config.testType}**, מורכבות **${config.complexity}**, על גבי **${envText}**, בתבנית **${template.name}**.
 
-שאלה ראשונה: **האם הבדיקה מיועדת לשתי הפלטפורמות (iOS + Android) או רק לאחת מהן? ובאיזו טכנולוגיה פותחה האפליקציה (Native, Flutter, React Native)?**`;
-    options = ['iOS ו-Android במקביל (Flutter/React Native)', 'iOS ו-Android פיתוח Native נפרד', 'אפליקציית iOS בלבד', 'אפליקציית Android בלבד'];
-  } else {
-    firstQuestion = `שלום! אני עוזר ה-AI של SecQuote לאפיון וסקופינג מבדקי סייבר.
-קלטתי את הבחירה שלך: **${config.categoryName}**, במודל **${config.testType}**, על גבי **${envText}**, עם תבנית **${template.name}**.
+לפי התבנית שבחרת אשאל **${total} שאלות** ממוקדות. התמחור מחושב לפי **${dailyRate.toLocaleString('en-US')}₪ ליום עבודה** כפי שהוגדר בהגדרות השוק. אפשר לכתוב "סיים" בכל שלב כדי להפיק הצעה מוקדם.
 
-שאלה ראשונה לפעילות: **מהו היעד המרכזי של הפעילות (Crown Jewels)? (למשל: השגת Domain Admin, חדירה למסד נתונים רגיש, או תפיסת שרת קריטי)?**`;
-    options = ['השגת שליטת Domain Admin בארגון', 'גישה לבסיס נתונים פיננסי / כרטיסי אשראי', 'חדירה מחוץ לארגון לרשת הפנימית', 'בדיקת מודעות עובדים ופישינג בלבד'];
-  }
+שאלה 1 מתוך ${total}: ${first.text}`;
+  const options = first.options;
 
   return {
     message: firstQuestion,
@@ -422,61 +414,52 @@ function runLocalIntelligentScopingEngine(params: {
   const updatedTotalMd = currentMandays + deltaMd;
   const totalCost = updatedTotalMd * dailyRate;
 
-  // Question sequences based on turn count
-  if (userTurnCount === 1) {
-    let nextQ = '';
-    let options: string[] = [];
+  /* ------------------------------------------------------------------ *
+   * Question progression.
+   *
+   * The run is assembled from the category picked in step 1, the actual
+   * configuration (environment / test type / complexity) and the template
+   * picked in step 2 — which also decides how many questions get asked.
+   * ------------------------------------------------------------------ */
+  const run = buildQuestionRun(config, template);
+  const total = plannedQuestionCount(template);
 
-    if (config.categoryKey === 'infra') {
-      nextQ = `רשמתי לפניי. ${newRequirement ? `שילבתי מיד את הדרישה הייעודית: "${newRequirement}" (+${deltaMd} MD). ` : ''}
-שאלה הבאה: **לגבי שרתים וסביבות פנימיות — האם המערכת כוללת דומיין Active Directory, שרתי לינוקס פנימיים או שילוב ענן היברידי?**`;
-      options = ['סביבת Active Directory ושרתי Windows', 'שרתי Linux בלבד (בענן)', 'סביבה היברידית (AD + Cloud + Linux)', 'ללא שרתים פנימיים (רק שירותים מנוהלים)'];
-    } else if (config.categoryKey === 'app') {
-      nextQ = `מעולה, הנתון עודכן. ${newRequirement ? `הוספתי את הדרישה המיוחדת: "${newRequirement}" (+${deltaMd} MD). ` : ''}
-שאלה הבאה: **כמה נקודות קצה של API (Endpoints) ישנן? והאם קיימות אינטגרציות צד-שלישי קריטיות (מערכות תשלומים, CRM, Webhooks)?**`;
-      options = ['עד 15 endpoints פשוטים', '15-40 endpoints כולל אינטגרציות צד ג', 'מעל 40 endpoints וארכיטקטורת מיקרוסרוויסים', 'ללא API חיצוני (מונולית בלבד)'];
-    } else if (config.categoryKey === 'mobile') {
-      nextQ = `הבנתי. ${newRequirement ? `שילבתי את הדגש המיוחד: "${newRequirement}" (+${deltaMd} MD). ` : ''}
-שאלה הבאה: **האם באפליקציה קיימים מנגנוני הגנה מתקדמים שצריך לעקוף/לבדוק (כגון Certificate Pinning, Root/Jailbreak Detection, חסימת צילומי מסך)?**`;
-      options = ['כן, יש SSL Pinning והגנת Root/Jailbreak', 'רק SSL Pinning בסיסי', 'אין מנגנוני הגנה מיוחדים בצד הלקוח', 'לא ידוע כרגע / דורש בירור'];
-    } else {
-      nextQ = `מצוין. ${newRequirement ? `שילבתי את הדגש: "${newRequirement}" (+${deltaMd} MD). ` : ''}
-שאלה הבאה: **אילו וקטורי תקיפה מורשים בפעילות? (האם ניתן לבצע פישינג לעובדים, ניסיונות עקיפת EDR, או פריצה פיזית)?**`;
-      options = ['פישינג ממוקד (Spear Phishing) + עקיפת EDR', 'תקיפה תשתיתית מרחוק בלבד (ללא הנדסה אנושית)', 'כל הווקטורים מורשים כולל הנדסה אנושית', 'הדמיית תוקף פנימי (Assumed Breach)'];
+  // userTurnCount counts the answer just given, so it indexes the next question.
+  const nextIndex = userTurnCount;
+  const wantsToFinish =
+    lower.includes('סיים') ||
+    lower.includes('הפק') ||
+    lower.includes('מספיק') ||
+    msg.includes('סיים אפיון');
+
+  if (!wantsToFinish && nextIndex < run.length) {
+    const q = run[nextIndex];
+
+    // Credit the man-days attached to the option the user picked last turn.
+    const prev = run[nextIndex - 1];
+    if (prev?.weights?.length) {
+      const picked = prev.options.findIndex((o) => msg.trim() === o);
+      if (picked >= 0) deltaMd += prev.weights[picked] || 0;
     }
 
+    const recomputedMd = currentMandays + deltaMd;
+    const askedNumber = nextIndex + 1;
+
     return {
-      aiMessage: `קיבלתי ועיבדתי את הנתונים. המחשבון החי עודכן ל-${updatedTotalMd} ימי אדם (MD).`,
-      nextQuestion: nextQ,
-      options,
+      aiMessage:
+        `נרשם. ${newRequirement ? `שילבתי את הדרישה "${newRequirement}". ` : ''}` +
+        `ההיקף עומד על ${recomputedMd} ימי עבודה (MD) לפי תעריף ${dailyRate.toLocaleString('en-US')}₪ ליום.`,
+      nextQuestion: `שאלה ${askedNumber} מתוך ${total}: ${q.text}`,
+      options: q.options.length ? q.options : undefined,
       mandaysDelta: deltaMd,
-      totalMandays: updatedTotalMd,
+      totalMandays: recomputedMd,
       newCustomRequirement: newRequirement,
       detectedClientName,
       detectedTargetSystem,
       scopeDetails,
       components: updatedComponents,
-      isComplete: false,
-    };
-  }
-
-  if (userTurnCount === 2) {
-    const nextQ = `תודה! ${newRequirement ? `הוספתי בהצלחה את הדרישה: "${newRequirement}". ` : ''}
-שאלה אחרונה לדיוק הסופי: **האם ישנן מערכות קריטיות שאסור להשבית, שעות בדיקה מועדפות (בלילה / סופ"ש) או הנחיות אישיות נוספות?**
-(ניתן לבחור מהאפשרויות או להקליד דרישות חופשיות בתיבה למטה)`;
-    const options = ['חלונות בדיקה רגילים (שעות עבודה)', 'בדיקות לילה/סופ"ש בלבד (+תוספת MD)', 'ללא מגבלות זמן מיוחדות', 'סיים אפיון והפק הצעת מחיר'];
-
-    return {
-      aiMessage: `פרטי הסביבה נקלטו במדויק. היקף הפרויקט עומד כעת על ${updatedTotalMd} ימי עבודה (MD).`,
-      nextQuestion: nextQ,
-      options,
-      mandaysDelta: deltaMd,
-      totalMandays: updatedTotalMd,
-      newCustomRequirement: newRequirement,
-      detectedClientName,
-      detectedTargetSystem,
-      scopeDetails,
-      components: updatedComponents,
+      questionNumber: askedNumber,
+      questionTotal: total,
       isComplete: false,
     };
   }

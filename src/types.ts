@@ -88,6 +88,8 @@ export interface UserItem {
   paymentMethod?: string;
   /** Free text appended to proposals this user produces. */
   quoteNotes?: string;
+  /** Daily rate (MD) set in market settings; prices every quote. */
+  dailyRate?: number;
 }
 
 export interface MarketTier {

@@ -158,7 +158,8 @@ export const WizardView: React.FC<WizardViewProps> = ({
   const documentPreviewRef = useRef<HTMLDivElement | null>(null);
   const fullDocumentExportRef = useRef<HTMLDivElement | null>(null);
 
-  const dailyRate = 4200;
+  // Set by the user in market settings; no longer a constant.
+  const dailyRate = currentUser?.dailyRate ?? 4500;
 
   const selectedTemplate =
     PROJECT_TEMPLATES.find((t) => t.key === selectedTemplateKey) ||

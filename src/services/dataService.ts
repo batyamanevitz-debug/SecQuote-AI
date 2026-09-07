@@ -187,6 +187,7 @@ function rowToUser(r: ProfileRow | TeamRow): UserItem {
     beneficiaryName: r.beneficiary_name || undefined,
     paymentMethod: r.payment_method || undefined,
     quoteNotes: r.quote_notes || undefined,
+    dailyRate: r.daily_rate == null ? undefined : Number(r.daily_rate),
   };
 }
 
@@ -243,6 +244,7 @@ export async function updateProfile(userId: string, patch: Partial<UserItem>): P
   if (patch.beneficiaryName !== undefined) row.beneficiary_name = patch.beneficiaryName;
   if (patch.paymentMethod !== undefined) row.payment_method = patch.paymentMethod;
   if (patch.quoteNotes !== undefined) row.quote_notes = patch.quoteNotes;
+  if (patch.dailyRate !== undefined) row.daily_rate = patch.dailyRate;
 
   const { data, error } = await supabase
     .from('profiles')

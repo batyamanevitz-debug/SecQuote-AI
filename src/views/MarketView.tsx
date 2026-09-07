@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { UserItem } from '../types';
 import { Header } from '../components/Header';
 import { MARKET_TIERS } from '../data/mockData';
 
@@ -12,11 +13,18 @@ const nis = (n: number) => '₪' + n.toLocaleString('en-US');
 const pctOf = (n: number) => ((n - MIN) / (MAX - MIN)) * 100;
 
 interface MarketViewProps {
+  currentUser?: UserItem | null;
+  onSaveRate?: (rate: number) => void;
 }
 
-export const MarketView: React.FC<MarketViewProps> = () => {
-  const [rate, setRate] = useState<number>(4500);
+export const MarketView: React.FC<MarketViewProps> = ({ currentUser, onSaveRate }) => {
+  // Seeded from the saved profile rate so the screen reflects reality.
+  const [rate, setRate] = useState<number>(currentUser?.dailyRate ?? MARKET_DEFAULT);
   const [saved, setSaved] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentUser?.dailyRate) setRate(currentUser.dailyRate);
+  }, [currentUser?.dailyRate]);
 
   const currentTier =
     MARKET_TIERS.find((t) => rate >= t.lo && rate <= t.hi) ||
@@ -29,6 +37,7 @@ export const MarketView: React.FC<MarketViewProps> = () => {
   const delta = rate - MARKET_DEFAULT;
 
   const handleSave = () => {
+    if (onSaveRate) onSaveRate(rate);
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
   };

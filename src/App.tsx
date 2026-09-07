@@ -605,7 +605,10 @@ export default function App() {
           )}
 
           {currentView === 'market' && (
-            <MarketView />
+            <MarketView
+              currentUser={currentUser}
+              onSaveRate={(rate) => handleSaveProfile({ dailyRate: rate }, [])}
+            />
           )}
 
           {currentView === 'users' && (
