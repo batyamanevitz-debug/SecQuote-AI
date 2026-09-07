@@ -9,6 +9,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Send,
+  Copy,
+  MessageCircle,
+  Mail,
   Download,
   FileText,
   Clock,
@@ -40,6 +43,8 @@ import { ElixSowDocument } from '../components/ElixSowDocument';
 interface WizardViewProps {
   initialQuote?: Quote | null;
   onFinishWizard: (newQuote: Quote) => void;
+  /** Saves without leaving the wizard; resolves to the persisted quote. */
+  onSaveQuote?: (quote: Quote) => Promise<Quote | null>;
   onViewSowDocument: (quote: Quote) => void;
   onCancel: () => void;
   currentUser?: UserItem | null;
@@ -48,6 +53,7 @@ interface WizardViewProps {
 export const WizardView: React.FC<WizardViewProps> = ({
   initialQuote,
   onFinishWizard,
+  onSaveQuote,
   onViewSowDocument,
   onCancel,
   currentUser,
@@ -137,6 +143,16 @@ export const WizardView: React.FC<WizardViewProps> = ({
 
   // Step 4 State
   // Filled from the chat: question 1 asks who the quote is for.
+  // Once saved, the row's real id/token replace the draft ones so a second
+  // save updates the same quote instead of inserting a duplicate.
+  const [persistedId, setPersistedId] = useState<string | null>(initialQuote?.id || null);
+  const [persistedToken, setPersistedToken] = useState<string | null>(
+    initialQuote?.shareToken || null
+  );
+  const [isSavingQuote, setIsSavingQuote] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const [clientName, setClientName] = useState<string>(initialQuote?.client || '');
   const [targetSystem, setTargetSystem] = useState<string>(initialQuote?.targetSystem || '');
   const [scopeDetails, setScopeDetails] = useState<{
@@ -344,12 +360,12 @@ export const WizardView: React.FC<WizardViewProps> = ({
     CATEGORIES_DATA.find((c) => c.key === selectedCategory)?.name || 'מבדק חוסן';
 
   const buildQuote = ({ asDraft = false }: { asDraft?: boolean } = {}): Quote => {
-    const quoteId = initialQuote?.id || `new-${Date.now()}`;
+    const quoteId = persistedId || initialQuote?.id || `new-${Date.now()}`;
     const quoteDate = initialQuote?.date || new Date().toLocaleDateString('he-IL');
     const resolvedClient = clientName.trim() || 'טיוטה ללא שם לקוח';
     return {
       id: quoteId,
-      shareToken: initialQuote?.shareToken,
+      shareToken: persistedToken || initialQuote?.shareToken,
       client: resolvedClient,
       initials: resolvedClient.slice(0, 2),
       date: quoteDate,
@@ -384,6 +400,45 @@ export const WizardView: React.FC<WizardViewProps> = ({
 
   const handleFinish = () => {
     onFinishWizard(buildQuote());
+  };
+
+  /** Persists the quote and keeps the user on the summary step. */
+  const saveQuoteNow = async (): Promise<Quote | null> => {
+    if (!onSaveQuote) return null;
+    setIsSavingQuote(true);
+    try {
+      const saved = await onSaveQuote(buildQuote());
+      if (saved) {
+        setPersistedId(saved.id);
+        if (saved.shareToken) setPersistedToken(saved.shareToken);
+      }
+      return saved;
+    } finally {
+      setIsSavingQuote(false);
+    }
+  };
+
+  /** The quote must exist before it can be shared — it needs a share token. */
+  const buildClientLink = (q: Quote | null): string | null => {
+    const token = q?.shareToken || persistedToken;
+    if (!token) return null;
+    return `${window.location.origin}${window.location.pathname}?doc=${encodeURIComponent(token)}&public=true`;
+  };
+
+  const clientMessage = (link: string) =>
+    `שלום ${clientName || 'לקוח יקר'},\nמצורפת הצעת המחיר ומפרט העבודה (SOW) מאת ${displayOrgName} עבור ${selectedCategoryName}:\n• היקף: ${currentMandays} ימי עבודה\n• עלות כוללת: ${nis(currentTotalCost)}\n• איש קשר: ${authorName}\n\nלצפייה במסמך המלא ובאישור דיגיטלי:\n${link}`;
+
+  const handleOpenShare = async () => {
+    const saved = await saveQuoteNow();
+    if (!saved && !persistedToken) return;
+    setShareMenuOpen(true);
+  };
+
+  const withLink = async (use: (link: string) => void) => {
+    const saved = persistedToken ? null : await saveQuoteNow();
+    const link = buildClientLink(saved);
+    if (!link) return;
+    use(link);
   };
 
   const stepsHeader = [
@@ -1363,6 +1418,104 @@ export const WizardView: React.FC<WizardViewProps> = ({
                 </span>
                 <ArrowLeft className="w-3.5 h-3.5 text-sky-400" />
               </button>
+
+              {/* Save without leaving the wizard */}
+              <button
+                type="button"
+                disabled={isSavingQuote}
+                onClick={saveQuoteNow}
+                className="w-full h-11 px-4 rounded-xl flex items-center gap-3 text-xs sm:text-sm font-bold text-emerald-200 bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 shadow-sm active:scale-98 transition-all cursor-pointer disabled:opacity-75"
+              >
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-none font-bold">
+                  {isSavingQuote ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                </span>
+                <span className="flex-1 text-right">
+                  {isSavingQuote ? 'שומר...' : 'שמור הצעת מחיר'}
+                </span>
+                <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+              </button>
+
+              {/* Send the client link. Saves first so the link has a token. */}
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled={isSavingQuote}
+                  onClick={handleOpenShare}
+                  className="w-full h-11 px-4 rounded-xl flex items-center gap-3 text-xs sm:text-sm font-bold text-[#a5f3fc] bg-[#22d3ee]/12 hover:bg-[#22d3ee]/20 border border-[#22d3ee]/40 shadow-sm active:scale-98 transition-all cursor-pointer disabled:opacity-75"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-[#22d3ee]/20 text-[#67e8f9] flex items-center justify-center flex-none font-bold">
+                    <Send className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="flex-1 text-right">שלח לינק ללקוח</span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-[#22d3ee]" />
+                </button>
+
+                {shareMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShareMenuOpen(false)} />
+                    <div className="absolute z-50 mt-2 inset-x-0 p-2 rounded-2xl bg-[#0b1329] border border-[#22d3ee]/30 shadow-[0_20px_45px_rgba(2,8,23,0.9)] flex flex-col gap-1">
+                      <div className="px-2 py-1 text-[11px] font-bold text-[#7dd3fc] border-b border-white/10 mb-1">
+                        שליחת קישור ל{clientName || 'לקוח'}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          withLink((link) => {
+                            if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {});
+                            setLinkCopied(true);
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          })
+                        }
+                        className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-[#cbe1ff] hover:bg-white/8 cursor-pointer text-right"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-[#7dd3fc]" />
+                        <span className="flex-1 text-right">{linkCopied ? 'הקישור הועתק ✓' : 'העתק קישור'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          withLink((link) => {
+                            window.open(
+                              `https://wa.me/?text=${encodeURIComponent(clientMessage(link))}`,
+                              '_blank',
+                              'noopener,noreferrer'
+                            );
+                            setShareMenuOpen(false);
+                          })
+                        }
+                        className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-[#cbe1ff] hover:bg-white/8 cursor-pointer text-right"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="flex-1 text-right">שלח בוואטסאפ</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          withLink((link) => {
+                            const subject = `הצעת מחיר ומפרט עבודה (SOW) עבור ${clientName} - ${displayOrgName}`;
+                            window.open(
+                              `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(clientMessage(link))}`,
+                              '_self'
+                            );
+                            setShareMenuOpen(false);
+                          })
+                        }
+                        className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-[#cbe1ff] hover:bg-white/8 cursor-pointer text-right"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="flex-1 text-right">שלח במייל</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Summary details card */}
               <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-[#7dd3fc]/15 flex flex-col gap-2 text-xs">

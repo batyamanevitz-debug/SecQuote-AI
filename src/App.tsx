@@ -276,6 +276,39 @@ export default function App() {
     setCurrentView('sow_doc');
   };
 
+  /**
+   * Saves without leaving the wizard, and hands back the persisted quote so
+   * the caller can use its share token. Used by "שמור הצעת מחיר" and by the
+   * client link, which needs the quote to exist before it can be shared.
+   */
+  const handleSaveQuoteInline = async (draft: Quote): Promise<Quote | null> => {
+    const replaceIn = (prev: Quote[], saved: Quote) => {
+      const without = prev.filter((q) => q.id !== draft.id && q.id !== saved.id);
+      return [saved, ...without];
+    };
+
+    if (isDemo || !authUserId) {
+      setQuotes((prev) => replaceIn(prev, draft));
+      try {
+        localStorage.setItem(`secquote_doc_${draft.shareToken || draft.id}`, JSON.stringify(draft));
+      } catch {
+        /* ignore */
+      }
+      showToast('ההצעה נשמרה (מצב דמו — לא נשמר לצמיתות) ✓');
+      return draft;
+    }
+
+    try {
+      const saved = await db.saveQuote(draft, authUserId);
+      setQuotes((prev) => replaceIn(prev, saved));
+      showToast('הצעת המחיר נשמרה ✓');
+      return saved;
+    } catch (err) {
+      showToast(`השמירה נכשלה: ${(err as Error).message}`);
+      return null;
+    }
+  };
+
   const handleFinishWizard = async (newQuote: Quote) => {
     const wasEditing = quotes.some((q) => q.id === newQuote.id);
 
@@ -614,6 +647,7 @@ export default function App() {
               initialQuote={selectedQuoteForSow}
               currentUser={currentUser}
               onFinishWizard={handleFinishWizard}
+              onSaveQuote={handleSaveQuoteInline}
               onViewSowDocument={handleViewSow}
               onCancel={() => {
                 setSelectedQuoteForSow(null);
