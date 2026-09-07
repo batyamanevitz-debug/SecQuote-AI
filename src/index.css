@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@keyframes sqFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -30px, 0) scale(1.07);
+  }
+}
+
+@keyframes sqFloatSlow {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -38px, 0) scale(1.08);
+  }
+}
+
+@keyframes sqPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes sqSweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.animate-sq-float {
+  animation: sqFloat 22s ease-in-out infinite;
+}
+
+.animate-sq-float-reverse {
+  animation: sqFloat 27s ease-in-out infinite reverse;
+}
+
+.animate-sq-pulse {
+  animation: sqPulse 5s ease-in-out infinite;
+}
+
+.animate-sq-sweep {
+  animation: sqSweep 3.6s ease-in-out infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(10, 16, 32, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.2);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.4);
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.3);
+}
+
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  [data-pdf-export-target="true"] {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+}

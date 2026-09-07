@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix SecQuote AI",
+  "description": "מערכת חכמה לאפיון ותמחור הצעות מחיר בסייבר ליועצים ועסקים (Cyber Quoting Platform)",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

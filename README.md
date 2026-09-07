@@ -1,11 +1,73 @@
-<div align="center">
+# SecQuote AI
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+מערכת חכמה לאפיון ותמחור הצעות מחיר בסייבר ליועצים ועסקים.
 
-  <h1>Built with AI Studio</h2>
+כל משתמש נרשם בעצמו, מקבל סביבת עבודה פרטית, ורואה אך ורק את ההצעות שלו.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## הרצה מקומית
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+**דרישות:** Node.js 18+
 
-</div>
+```bash
+npm install
+npm run dev
+```
+
+האתר עולה על http://localhost:3000
+
+## משתני סביבה
+
+הקובץ `.env` (לא נכנס ל-git) צריך להכיל:
+
+```
+VITE_SUPABASE_URL="https://<project>.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
+GEMINI_API_KEY=""
+```
+
+- שני מפתחות ה-Supabase נחשפים לדפדפן בכוונה. מה שמגן על הנתונים הוא
+  Row Level Security במסד הנתונים, לא סודיות המפתח.
+- `GEMINI_API_KEY` הוא רשות. בלעדיו אשף האפיון עובר אוטומטית למנוע האפיון
+  המקומי שמובנה בקוד.
+
+## מבנה הנתונים (Supabase)
+
+| טבלה | תוכן | הרשאות |
+|------|------|---------|
+| `profiles` | פרופיל המשתמש: שם, ארגון, ח.פ, פרטי בנק | כל אחד רואה ועורך רק את השורה שלו |
+| `quotes` | הצעות המחיר | `user_id = auth.uid()` בלבד |
+| `team_members` | אנשי הצוות שכל בעל חשבון מנהל לעצמו | `owner_id = auth.uid()` בלבד |
+
+- בהרשמה נוצר פרופיל אוטומטית דרך טריגר `on_auth_user_created`.
+- **שיתוף מסמך ללקוח** נעשה דרך `share_token` — uuid סודי לכל הצעה.
+  הקישור `?doc=<share_token>` נפתר בפונקציית `get_shared_quote()`, שמחזירה
+  שורה אחת בלבד לפי הטוקן. גולש אנונימי לא יכול לסרוק את הטבלה.
+
+## מצב דמו
+
+כפתור "הצג מצב דמו" נכנס למערכת עם נתוני דוגמה **בדויים לחלוטין**, בלי הרשמה
+ובלי שמירה. הנתונים ב-`src/data/mockData.ts` הם פיקטיביים במכוון — מצב הדמו
+פתוח לכל אחד, ולכן אסור שיהיו בו פרטים אמיתיים.
+
+## הגדרות שדורשות פעולה בלוח הבקרה של Supabase
+
+שתי הגדרות שאי אפשר להגדיר מהקוד:
+
+1. **אימות מייל** מופעל כרגע. משתמש חדש חייב לאשר מייל לפני התחברות ראשונה.
+   שירות המייל המובנה של Supabase מוגבל מאוד (בערך 2 מיילים בשעה, ולרוב
+   מגיע רק לכתובות של חברי הפרויקט). לשימוש אמיתי צריך אחד משניים:
+   - לחבר SMTP חיצוני ב-Authentication → Emails, או
+   - לכבות את Confirm email ב-Authentication → Sign In / Providers,
+     ואז הרשמה מכניסה למערכת מיד.
+
+2. **התחברות עם Google** כבויה. כפתור Google מסתתר אוטומטית כל עוד היא כבויה,
+   כדי שלא יוביל לדף שגיאה. להפעלה: Authentication → Sign In / Providers → Google.
+
+## סקריפטים
+
+```bash
+npm run dev      # שרת פיתוח
+npm run build    # בניית production
+npm run start    # הרצת ה-build
+npm run lint     # בדיקת טיפוסים
+```
