@@ -136,12 +136,9 @@ export const WizardView: React.FC<WizardViewProps> = ({
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Step 4 State
-  const [clientName, setClientName] = useState<string>(
-    initialQuote?.client || 'Cyber Insurance Academy'
-  );
-  const [targetSystem, setTargetSystem] = useState<string>(
-    initialQuote?.targetSystem || 'WordPress Web Application Frontend + Backend'
-  );
+  // Filled from the chat: question 1 asks who the quote is for.
+  const [clientName, setClientName] = useState<string>(initialQuote?.client || '');
+  const [targetSystem, setTargetSystem] = useState<string>(initialQuote?.targetSystem || '');
   const [scopeDetails, setScopeDetails] = useState<{
     environment?: string;
     roles?: string;

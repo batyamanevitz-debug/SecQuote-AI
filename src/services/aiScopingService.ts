@@ -255,14 +255,33 @@ function runLocalIntelligentScopingEngine(params: {
   let newRequirement: string | null = null;
   const updatedComponents = [...currentComponents];
 
-  // 1. Natural Language Extraction of Client Name from chat
+  // 1. Client name.
   let detectedClientName: string | null = null;
-  const clientMatch = msg.match(/(?:עבור|שם הלקוח הוא|שם הלקוח:|שם הלקוח|לקוח:|הלקוח הוא|הלקוח|חברת|חברה|בנק)\s*[:\-–]?\s*([A-Za-z0-9\u0590-\u05FF\s\-&]+)/i);
-  if (clientMatch && clientMatch[1]) {
-    const raw = clientMatch[1].trim().replace(/[.,!?:;]+$/, '');
-    const blockedKeywords = ['בדיקה', 'שרת', 'האפליקציה', 'מערכת', 'סיים', 'הפק', 'חלונות'];
-    if (raw.length >= 2 && raw.length <= 40 && !blockedKeywords.some(b => raw.includes(b))) {
-      detectedClientName = raw;
+
+  // The opening question asks outright who the quote is for, so the answer
+  // to it *is* the client name, taken verbatim. That is what makes a plain
+  // answer like "אל על" work without any keyword guessing.
+  const questionRun = buildQuestionRun(config, template);
+  // chatHistory already contains the message being handled, so userTurnCount is
+  // one ahead: the question just answered sits at userTurnCount - 2.
+  const answeredIndex = userTurnCount - 2;
+  const answeredQuestion = questionRun[answeredIndex];
+  if (answeredQuestion?.field === 'client') {
+    const named = msg.replace(/[.,!?:;]+$/, '').trim();
+    if (named.length >= 2 && named.length <= 60) {
+      detectedClientName = named;
+    }
+  }
+
+  // Later in the chat, still try to pick a name out of free text.
+  if (!detectedClientName) {
+    const clientMatch = msg.match(/(?:עבור|שם הלקוח הוא|שם הלקוח:|שם הלקוח|לקוח:|הלקוח הוא|הלקוח|חברת|חברה|בנק)\s*[:\-–]?\s*([A-Za-z0-9\u0590-\u05FF\s\-&]+)/i);
+    if (clientMatch && clientMatch[1]) {
+      const raw = clientMatch[1].trim().replace(/[.,!?:;]+$/, '');
+      const blockedKeywords = ['בדיקה', 'שרת', 'האפליקציה', 'מערכת', 'סיים', 'הפק', 'חלונות'];
+      if (raw.length >= 2 && raw.length <= 40 && !blockedKeywords.some((b) => raw.includes(b))) {
+        detectedClientName = raw;
+      }
     }
   }
 
@@ -424,8 +443,8 @@ function runLocalIntelligentScopingEngine(params: {
   const run = buildQuestionRun(config, template);
   const total = plannedQuestionCount(template);
 
-  // userTurnCount counts the answer just given, so it indexes the next question.
-  const nextIndex = userTurnCount;
+  // The next question follows the one just answered.
+  const nextIndex = answeredIndex + 1;
   const wantsToFinish =
     lower.includes('סיים') ||
     lower.includes('הפק') ||

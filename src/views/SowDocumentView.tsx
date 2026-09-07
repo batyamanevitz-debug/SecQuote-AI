@@ -30,7 +30,7 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
   const documentRef = useRef<HTMLDivElement | null>(null);
   const fullExportRef = useRef<HTMLDivElement | null>(null);
 
-  const clientName = quote?.client || 'Cyber Insurance Academy';
+  const clientName = quote?.client || 'ללא שם לקוח';
   const totalCost = quote?.cost || '₪12,980';
   const totalMd = quote?.mandays || 7;
 

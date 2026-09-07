@@ -66,7 +66,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   branchNumber: propBranchNumber,
   beneficiaryName: propBeneficiaryName,
 }) => {
-  const clientName = propClientName || quote?.client || 'Cyber Insurance Academy';
+  const clientName = propClientName || quote?.client || '';
   const categoryName = propCategoryName || quote?.kind || 'מבדק חוסן אפליקטיבי';
   const testType = propTestType || quote?.testType || 'Blackbox';
   const staging = propStaging ?? (quote?.environment === 'Staging');
@@ -181,7 +181,9 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
                   type="text"
                   value={clientName}
                   onChange={(e) => onClientNameChange(e.target.value)}
-                  className="text-center font-black border-b-2 border-[#0d6282] bg-transparent outline-none px-2 py-0.5"
+                  placeholder="שם הלקוח"
+                  // Full width: the default input size clipped longer names.
+                  className="w-full text-center font-black border-b-2 border-[#0d6282] bg-transparent outline-none px-2 py-0.5 placeholder:text-slate-400 placeholder:font-semibold"
                 />
               ) : (
                 clientName
