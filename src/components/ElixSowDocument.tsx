@@ -97,6 +97,8 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   const bankNumber = propBankNumber || quote?.bankNumber || fin.bankNumber;
   const branchNumber = propBranchNumber || quote?.branchNumber || fin.branchNumber;
   const beneficiaryName = propBeneficiaryName || quote?.beneficiaryName || fin.beneficiaryName;
+  const paymentMethod = quote?.paymentMethod || 'העברה בנקאית';
+  const quoteNotes = (quote?.quoteNotes || '').trim();
   const authorName = propAuthorName || quote?.authorName || fin.authorName;
   const authorEmail = propAuthorEmail || quote?.authorEmail || fin.authorEmail;
   const authorPhone = propAuthorPhone || fin.authorPhone;
@@ -703,7 +705,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
                   אמצעי תשלום
                 </div>
                 <div className="p-2.5 text-center font-bold text-slate-900 flex items-center justify-center">
-                  העברה בנקאית
+                  {paymentMethod}
                 </div>
               </div>
               <div className="grid grid-cols-[140px_1fr] border-b border-slate-300">
@@ -739,6 +741,18 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Free text carried over from the sender's personal area. */}
+            {quoteNotes && (
+              <div className="w-full max-w-[500px] mx-auto mb-6 border border-slate-300 text-xs sm:text-sm" dir="rtl">
+                <div className="p-2.5 bg-slate-50 border-b border-slate-300 font-bold text-slate-700 text-right">
+                  הערות ותנאים נוספים
+                </div>
+                <div className="p-3 text-slate-800 leading-relaxed whitespace-pre-line text-right">
+                  {quoteNotes}
+                </div>
+              </div>
+            )}
 
             {/* סיכום הצעה */}
             <div className="mb-6 text-center">

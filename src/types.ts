@@ -45,6 +45,9 @@ export interface Quote {
   bankNumber?: string;
   branchNumber?: string;
   beneficiaryName?: string;
+  paymentMethod?: string;
+  /** Free text the user asked to append to this proposal. */
+  quoteNotes?: string;
 }
 
 export interface ChatMessage {
@@ -82,6 +85,9 @@ export interface UserItem {
   bankNumber?: string;
   branchNumber?: string;
   beneficiaryName?: string;
+  paymentMethod?: string;
+  /** Free text appended to proposals this user produces. */
+  quoteNotes?: string;
 }
 
 export interface MarketTier {

@@ -65,6 +65,9 @@ export const WizardView: React.FC<WizardViewProps> = ({
   const bankNumber = initialQuote?.bankNumber || fin.bankNumber;
   const branchNumber = initialQuote?.branchNumber || fin.branchNumber;
   const beneficiaryName = initialQuote?.beneficiaryName || fin.beneficiaryName;
+  // Set once in the personal area, copied onto every quote produced here.
+  const paymentMethod = initialQuote?.paymentMethod || currentUser?.paymentMethod || 'העברה בנקאית';
+  const quoteNotes = initialQuote?.quoteNotes ?? currentUser?.quoteNotes ?? '';
 
   // Derive initials and avatar for user chat bubble matching logged-in user
   const chatUserInitials =
@@ -376,6 +379,8 @@ export const WizardView: React.FC<WizardViewProps> = ({
       bankNumber: bankNumber,
       branchNumber: branchNumber,
       beneficiaryName: beneficiaryName,
+      paymentMethod: paymentMethod,
+      quoteNotes: quoteNotes,
     };
   };
 

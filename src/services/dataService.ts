@@ -47,6 +47,8 @@ function rowToQuote(r: QuoteRow): Quote {
     bankNumber: r.bank_number || undefined,
     branchNumber: r.branch_number || undefined,
     beneficiaryName: r.beneficiary_name || undefined,
+    paymentMethod: r.payment_method || undefined,
+    quoteNotes: r.quote_notes || undefined,
   };
 }
 
@@ -79,6 +81,8 @@ function quoteToRow(q: Quote, userId: string): QuoteRow {
     bank_number: q.bankNumber ?? null,
     branch_number: q.branchNumber ?? null,
     beneficiary_name: q.beneficiaryName ?? null,
+    payment_method: q.paymentMethod ?? null,
+    quote_notes: q.quoteNotes ?? null,
   };
 }
 
@@ -128,6 +132,13 @@ export async function updateQuoteFields(
   if (patch.client !== undefined) row.client = patch.client;
   if (patch.cost !== undefined) row.cost = patch.cost;
   if (patch.rawCost !== undefined) row.raw_cost = patch.rawCost;
+  if (patch.hpNumber !== undefined) row.hp_number = patch.hpNumber;
+  if (patch.bankAccountNumber !== undefined) row.bank_account_number = patch.bankAccountNumber;
+  if (patch.bankNumber !== undefined) row.bank_number = patch.bankNumber;
+  if (patch.branchNumber !== undefined) row.branch_number = patch.branchNumber;
+  if (patch.beneficiaryName !== undefined) row.beneficiary_name = patch.beneficiaryName;
+  if (patch.paymentMethod !== undefined) row.payment_method = patch.paymentMethod;
+  if (patch.quoteNotes !== undefined) row.quote_notes = patch.quoteNotes;
 
   const { data, error } = await supabase
     .from('quotes')
@@ -174,6 +185,8 @@ function rowToUser(r: ProfileRow | TeamRow): UserItem {
     bankNumber: r.bank_number || undefined,
     branchNumber: r.branch_number || undefined,
     beneficiaryName: r.beneficiary_name || undefined,
+    paymentMethod: r.payment_method || undefined,
+    quoteNotes: r.quote_notes || undefined,
   };
 }
 
@@ -228,6 +241,8 @@ export async function updateProfile(userId: string, patch: Partial<UserItem>): P
   if (patch.bankNumber !== undefined) row.bank_number = patch.bankNumber;
   if (patch.branchNumber !== undefined) row.branch_number = patch.branchNumber;
   if (patch.beneficiaryName !== undefined) row.beneficiary_name = patch.beneficiaryName;
+  if (patch.paymentMethod !== undefined) row.payment_method = patch.paymentMethod;
+  if (patch.quoteNotes !== undefined) row.quote_notes = patch.quoteNotes;
 
   const { data, error } = await supabase
     .from('profiles')
@@ -326,4 +341,33 @@ export async function deleteTeamMember(ownerId: string, id: string): Promise<voi
 
 export function isUuid(value: string | undefined | null): boolean {
   return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/**
+ * Copies the account's billing details onto quotes the user picked, so a
+ * corrected bank number can be pushed onto proposals already drafted.
+ */
+export async function applyBillingToQuotes(
+  userId: string,
+  quoteIds: string[],
+  billing: Partial<UserItem>
+): Promise<Quote[]> {
+  if (quoteIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('quotes')
+    .update({
+      hp_number: billing.hpNumber ?? null,
+      bank_account_number: billing.bankAccountNumber ?? null,
+      bank_number: billing.bankNumber ?? null,
+      branch_number: billing.branchNumber ?? null,
+      beneficiary_name: billing.beneficiaryName ?? null,
+      payment_method: billing.paymentMethod ?? null,
+      quote_notes: billing.quoteNotes ?? null,
+    })
+    .in('id', quoteIds)
+    .eq('user_id', userId)
+    .select();
+  if (error) throw error;
+  return (data || []).map(rowToQuote);
 }

@@ -21,6 +21,17 @@ import * as db from './services/dataService';
  */
 type SessionMode = 'booting' | 'auth' | 'live' | 'demo';
 
+/** The subset of a profile that gets copied onto a quote. */
+const billingOf = (u: Partial<UserItem>) => ({
+  hpNumber: u.hpNumber,
+  bankAccountNumber: u.bankAccountNumber,
+  bankNumber: u.bankNumber,
+  branchNumber: u.branchNumber,
+  beneficiaryName: u.beneficiaryName,
+  paymentMethod: u.paymentMethod,
+  quoteNotes: u.quoteNotes,
+});
+
 export default function App() {
   /* ------------------------- public client link ------------------------- */
 
@@ -325,6 +336,44 @@ export default function App() {
     }
   };
 
+  /**
+   * Saves the personal area. The profile is the default for every future
+   * quote; `applyToQuoteIds` additionally stamps the billing block onto
+   * proposals that already exist.
+   */
+  const handleSaveProfile = async (
+    patch: Partial<UserItem>,
+    applyToQuoteIds: string[]
+  ) => {
+    setCurrentUser((prev) => (prev ? { ...prev, ...patch } : prev));
+
+    if (isDemo || !authUserId) {
+      if (applyToQuoteIds.length) {
+        setQuotes((prev) =>
+          prev.map((q) => (applyToQuoteIds.includes(q.id) ? { ...q, ...billingOf(patch) } : q))
+        );
+      }
+      showToast('הפרטים עודכנו (מצב דמו — לא נשמרים) ✓');
+      return;
+    }
+
+    try {
+      const saved = await db.updateProfile(authUserId, patch);
+      setCurrentUser(saved);
+
+      if (applyToQuoteIds.length) {
+        const updated = await db.applyBillingToQuotes(authUserId, applyToQuoteIds, patch);
+        const byId = new Map(updated.map((q) => [q.id, q]));
+        setQuotes((prev) => prev.map((q) => byId.get(q.id) || q));
+        showToast(`הפרטים נשמרו ועודכנו ב-${updated.length} הצעות ✓`);
+      } else {
+        showToast('הפרטים נשמרו ויופיעו בכל הצעה חדשה ✓');
+      }
+    } catch (err) {
+      showToast(`השמירה נכשלה: ${(err as Error).message}`);
+    }
+  };
+
   /* ---------------------------- team actions ---------------------------- */
 
   const handleAddUser = async (user: Omit<UserItem, 'id' | 'initials' | 'avatar' | 'joined'>) => {
@@ -538,6 +587,7 @@ export default function App() {
               onQuoteStatusUpdate={handleQuoteStatusUpdate}
               onDeleteQuote={handleDeleteQuote}
               onDuplicateQuote={handleDuplicateQuote}
+              onSaveProfile={handleSaveProfile}
             />
           )}
 
