@@ -1,7 +1,23 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+/**
+ * Public project identifiers for the hosted SecQuote deployment.
+ *
+ * These are safe to ship: a Supabase *publishable* key is designed to sit in
+ * the browser, and it is embedded in the JS bundle of every deployed build
+ * anyway. What actually protects the data is Row Level Security — every table
+ * is restricted to `auth.uid()`, so this key alone reads nothing.
+ *
+ * Anything set in the environment wins, so a different Supabase project can be
+ * pointed at without touching the code.
+ */
+const DEFAULT_SUPABASE_URL = 'https://fktjaxtqyawbnjacihzy.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VFHNaGKLwBW10VgLyd7A5g_0BnnC4to';
+
+const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_SUPABASE_URL;
+const key =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * True when the app has real Supabase credentials. When false the app still
