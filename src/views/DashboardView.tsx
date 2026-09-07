@@ -121,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const getShareMessage = (quote: Quote) => {
     const link = getDocLink(quote);
-    return `שלום ${quote.client},\nמצורפת הצעת המחיר ומפרט העבודה (SOW) עבור ${quote.kind}:\n• מזהה הצעה: ${quote.id}\n• היקף: ${quote.mandays || 'מותאם'}\n• עלות כוללת: ${quote.cost}\n\nלצפייה במסמך המלא ובאישור דיגיטלי:\n${link}`;
+    return `שלום ${quote.client},\nמצורפת הצעת המחיר ומפרט העבודה (SOW) עבור ${quote.kind}:\n• היקף: ${quote.mandays || 'מותאם'}\n• עלות כוללת: ${quote.cost}\n\nלצפייה במסמך המלא ובאישור דיגיטלי:\n${link}`;
   };
 
   const handleOpenWhatsApp = (quote: Quote) => {

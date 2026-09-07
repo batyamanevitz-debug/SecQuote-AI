@@ -118,7 +118,7 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
     } catch {}
     const baseUrl = window.location.origin + window.location.pathname;
     const shareUrl = `${baseUrl}?doc=${encodeURIComponent(shareToken)}&public=true`;
-    const message = `שלום ${clientName},\nמצורפת הצעת המחיר ומפרט העבודה (SOW) מאת ${displayOrgName} עבור ${quote?.kind || 'מבדק חדירות'}:\n• מזהה הצעה: ${docId}\n• היקף: ${totalMd} MD\n• עלות כוללת: ${totalCost}\n• איש קשר: ${authorName}\n\nלצפייה במסמך המלא ובאישור דיגיטלי:\n${shareUrl}`;
+    const message = `שלום ${clientName},\nמצורפת הצעת המחיר ומפרט העבודה (SOW) מאת ${displayOrgName} עבור ${quote?.kind || 'מבדק חדירות'}:\n• היקף: ${totalMd} MD\n• עלות כוללת: ${totalCost}\n• איש קשר: ${authorName}\n\nלצפייה במסמך המלא ובאישור דיגיטלי:\n${shareUrl}`;
     return { shareUrl, message, docId };
   };
 
@@ -162,18 +162,10 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
     <div dir="rtl" className="flex-1 min-w-0 flex flex-col h-full bg-[#070b19] overflow-y-auto">
       {/* Action Bar (Hidden on print) */}
       <div className="no-print sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 px-3 sm:px-6 py-3 bg-[#0a1122]/95 border-b border-[#7dd3fc]/15 backdrop-blur-md">
-        {/* If public view, show branded document header with optional return button for system preview */}
+        {/* Public view is what an external client sees. No route back into the
+            internal app, and no internal row id — just who the proposal is for. */}
         {isPublicView ? (
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              title="חזרה למערכת"
-              className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-[#7dd3fc]/20 text-xs font-bold text-[#cbe1ff] hover:text-white transition-all active:scale-95"
-            >
-              <ArrowRight className="w-3.5 h-3.5" />
-              <span>חזרה למערכת</span>
-            </button>
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0284c7] to-[#0369a1] flex items-center justify-center shadow-[0_0_12px_rgba(2,132,199,0.5)] flex-none">
                 <FileText className="w-4 h-4 text-white" />
@@ -186,7 +178,7 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
                   </span>
                 </div>
                 <div className="text-[11px] text-[#cbe1ff]/65">
-                  עבור: <strong className="text-[#9fd4ff]">{clientName}</strong> · מזהה מסמך: <span className="font-mono text-[#7dd3fc]">{quote?.id || 'Q-2024-001'}</span>
+                  עבור: <strong className="text-[#9fd4ff]">{clientName}</strong>
                 </div>
               </div>
             </div>
