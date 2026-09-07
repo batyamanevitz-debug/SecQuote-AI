@@ -9,7 +9,7 @@ import { WizardView } from './views/WizardView';
 import { MarketView } from './views/MarketView';
 import { UsersView } from './views/UsersView';
 import { SowDocumentView } from './views/SowDocumentView';
-import { Menu, LayoutDashboard, FileText, Users, Settings, PlayCircle, X } from 'lucide-react';
+import { Menu, LayoutDashboard, FileText, Users, Settings, PlayCircle, X, LogOut } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as db from './services/dataService';
 
@@ -48,6 +48,7 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState<boolean>(false);
 
   const isDemo = mode === 'demo';
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -575,14 +576,57 @@ export default function App() {
           )}
         </main>
 
-        {/* Mobile Bottom Navigation Bar (Hidden on Desktop) */}
+        {/* Mobile + tablet navigation.
+            The bar itself is fixed, so content scrolls the full height behind
+            it; this spacer keeps the last row of content clear of the pill. */}
+        {currentView !== 'sow_doc' && <div className="lg:hidden flex-none h-24" aria-hidden="true" />}
+
         {currentView !== 'sow_doc' && (
-          <nav className="lg:hidden flex-none z-30 h-15 bg-[#090e1c]/95 border-t border-[#7dd3fc]/15 backdrop-blur-xl px-2 flex items-center justify-around shadow-[0_-8px_25px_rgba(0,0,0,0.6)]">
-            {navItems.map((item) => {
+          <nav className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,520px)] h-[68px] rounded-full bg-[#0b1220]/92 border border-[#7dd3fc]/20 backdrop-blur-2xl px-1.5 flex items-center justify-around shadow-[0_18px_45px_-10px_rgba(2,8,23,0.95),0_0_30px_-18px_rgba(34,211,238,0.7)]">
+            {navItems.slice(0, 2).map((item) => {
               const Icon = item.icon;
               const active =
                 (item.id === 'dashboard' && currentView === 'dashboard') ||
-                (item.id === 'wizard' && (currentView === 'wizard' || currentView === 'sow_doc')) ||
+                (item.id === 'wizard' && (currentView === 'wizard' || currentView === 'sow_doc'));
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCurrentView(item.id)}
+                  className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] rounded-full transition-all duration-200 cursor-pointer ${
+                    active ? 'text-[#22d3ee]' : 'text-[#cbe1ff]/60 hover:text-[#eaf9ff]'
+                  }`}
+                >
+                  <div className={`p-1 rounded-xl transition-all ${active ? 'bg-[#22d3ee]/15 scale-110' : ''}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-medium tracking-tight mt-0.5">{item.label}</span>
+                </button>
+              );
+            })}
+
+            {/* Centre: the logo doubles as the way out of the workspace. */}
+            <button
+              type="button"
+              onClick={() => setLogoutConfirmOpen(true)}
+              aria-label="יציאה מהמערכת"
+              className="relative flex-none -mt-9 w-[74px] flex flex-col items-center justify-start cursor-pointer group"
+            >
+              <span className="relative flex items-center justify-center w-[54px] h-[54px] rounded-full bg-gradient-to-br from-[#132244] to-[#0a1224] border border-[#22d3ee]/45 shadow-[0_10px_26px_-6px_rgba(2,8,23,0.95),0_0_26px_-8px_rgba(34,211,238,0.75)] transition-transform duration-200 group-active:scale-95">
+                <Logo size={34} showText={false} />
+                <span className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full bg-red-500 border-2 border-[#0b1220] flex items-center justify-center shadow-md">
+                  <LogOut className="w-2.5 h-2.5 text-white" />
+                </span>
+              </span>
+              <span className="mt-1 text-[11px] font-semibold tracking-tight text-[#cbe1ff]/75 group-hover:text-[#eaf9ff]">
+                יציאה
+              </span>
+            </button>
+
+            {navItems.slice(2).map((item) => {
+              const Icon = item.icon;
+              const active =
                 (item.id === 'users' && currentView === 'users') ||
                 (item.id === 'market' && currentView === 'market');
 
@@ -591,22 +635,67 @@ export default function App() {
                   key={item.id}
                   type="button"
                   onClick={() => setCurrentView(item.id)}
-                  className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] transition-all duration-200 cursor-pointer ${
+                  className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] rounded-full transition-all duration-200 cursor-pointer ${
                     active ? 'text-[#22d3ee]' : 'text-[#cbe1ff]/60 hover:text-[#eaf9ff]'
                   }`}
                 >
                   <div className={`p-1 rounded-xl transition-all ${active ? 'bg-[#22d3ee]/15 scale-110' : ''}`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-[11px] font-medium tracking-tight mt-0.5">
-                    {item.label}
-                  </span>
+                  <span className="text-[11px] font-medium tracking-tight mt-0.5">{item.label}</span>
                 </button>
               );
             })}
           </nav>
         )}
       </div>
+
+      {/* Exit confirmation. The centre button sits where a thumb naturally
+          lands, so signing out is never a single accidental tap. */}
+      {logoutConfirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="lg:hidden fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setLogoutConfirmOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm mb-24 rounded-3xl border border-[#7dd3fc]/25 bg-[#0d1526] p-5 shadow-[0_30px_70px_rgba(2,8,23,0.95)]"
+          >
+            <div className="flex flex-col items-center text-center gap-2.5">
+              <Logo size={44} showText={false} />
+              <h3 className="text-base font-bold text-[#f4f9ff]">לצאת מהמערכת?</h3>
+              <p className="text-xs text-[#cbe1ff]/70 leading-relaxed">
+                {isDemo
+                  ? 'תחזור/י למסך הפתיחה. נתוני הדמו ממילא אינם נשמרים.'
+                  : 'תתנתק/י מהחשבון. כל ההצעות שלך שמורות וימתינו לך בכניסה הבאה.'}
+              </p>
+            </div>
+
+            <div className="mt-5 flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setLogoutConfirmOpen(false)}
+                className="flex-1 h-11 rounded-full text-sm font-bold text-[#cbe1ff]/80 bg-white/[0.06] hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLogoutConfirmOpen(false);
+                  handleLogout();
+                }}
+                className="flex-1 h-11 rounded-full text-sm font-bold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>יציאה</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notification Toast */}
       {toastMessage && (
