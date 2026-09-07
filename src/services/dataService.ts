@@ -165,6 +165,18 @@ export async function fetchSharedQuote(token: string): Promise<Quote | null> {
   return row ? rowToQuote(row) : null;
 }
 
+/**
+ * Approves a proposal from the client-facing link. The visitor has no session,
+ * so this goes through a token-scoped function rather than a table write.
+ */
+export async function approveSharedQuote(token: string): Promise<Quote | null> {
+  if (!isUuid(token)) return null;
+  const { data, error } = await supabase.rpc('approve_shared_quote', { token });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? rowToQuote(row) : null;
+}
+
 /* ------------------------------ profile ------------------------------ */
 
 function rowToUser(r: ProfileRow | TeamRow): UserItem {

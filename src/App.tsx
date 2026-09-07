@@ -234,6 +234,24 @@ export default function App() {
       prev && prev.id === quoteId ? { ...prev, status: newStatus } : prev
     );
 
+    // A client opening the proposal link has no session. Their approval still
+    // has to persist, so it goes through the token-scoped function instead of
+    // silently succeeding in the UI only.
+    if (!authUserId && isPublicClientView && newStatus === 'אושר') {
+      const token = selectedQuoteForSow?.shareToken || shareTokenFromUrl;
+      if (!token) {
+        showToast('לא ניתן לאשר: חסר מזהה מסמך');
+        return;
+      }
+      try {
+        await db.approveSharedQuote(token);
+        showToast(message);
+      } catch (err) {
+        showToast(`האישור לא נשמר: ${(err as Error).message}`);
+      }
+      return;
+    }
+
     if (isDemo || !authUserId) {
       showToast(message);
       return;
