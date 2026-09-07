@@ -9,7 +9,7 @@ import { WizardView } from './views/WizardView';
 import { MarketView } from './views/MarketView';
 import { UsersView } from './views/UsersView';
 import { SowDocumentView } from './views/SowDocumentView';
-import { Menu, LayoutDashboard, FileText, Users, Settings, PlayCircle, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, PlayCircle, X, LogOut } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as db from './services/dataService';
 
@@ -47,7 +47,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>(shareTokenFromUrl ? 'sow_doc' : 'auth');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState<boolean>(false);
 
   const isDemo = mode === 'demo';
@@ -496,8 +495,6 @@ export default function App() {
         currentView={currentView}
         onNavigate={(view) => setCurrentView(view)}
         onLogout={handleLogout}
-        isOpenMobile={isMobileMenuOpen}
-        onCloseMobile={() => setIsMobileMenuOpen(false)}
         currentUser={currentUser}
         users={isDemo ? usersForManagement : []}
         onSwitchUser={isDemo ? handleSwitchUser : undefined}
@@ -541,7 +538,6 @@ export default function App() {
               onQuoteStatusUpdate={handleQuoteStatusUpdate}
               onDeleteQuote={handleDeleteQuote}
               onDuplicateQuote={handleDuplicateQuote}
-              onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             />
           )}
 
@@ -555,12 +551,11 @@ export default function App() {
                 setSelectedQuoteForSow(null);
                 setCurrentView('dashboard');
               }}
-              onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             />
           )}
 
           {currentView === 'market' && (
-            <MarketView onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />
+            <MarketView />
           )}
 
           {currentView === 'users' && (
@@ -571,7 +566,6 @@ export default function App() {
               onAddUser={handleAddUser}
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
-              onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             />
           )}
         </main>

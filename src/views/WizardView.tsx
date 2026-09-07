@@ -42,7 +42,6 @@ interface WizardViewProps {
   onFinishWizard: (newQuote: Quote) => void;
   onViewSowDocument: (quote: Quote) => void;
   onCancel: () => void;
-  onOpenMobileMenu?: () => void;
   currentUser?: UserItem | null;
 }
 
@@ -51,7 +50,6 @@ export const WizardView: React.FC<WizardViewProps> = ({
   onFinishWizard,
   onViewSowDocument,
   onCancel,
-  onOpenMobileMenu,
   currentUser,
 }) => {
   // Resolve dynamic organization & financial details
@@ -399,7 +397,6 @@ export const WizardView: React.FC<WizardViewProps> = ({
         <Header
           title={isEditing ? `עריכת הצעת מחיר - ${initialQuote.client} (${initialQuote.id})` : 'אשף יצירת הצעת מחיר'}
           subtitle={`שלב ${step} מתוך 4 · ${stepsHeader[step - 1].label}${isEditing ? ' · במצב עריכה' : ''}`}
-          onOpenMobileMenu={onOpenMobileMenu}
         />
       </div>
 

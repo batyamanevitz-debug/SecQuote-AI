@@ -37,7 +37,6 @@ interface DashboardViewProps {
   onQuoteStatusUpdate?: (quoteId: string, newStatus: QuoteStatus) => void;
   onDeleteQuote?: (quoteId: string) => void;
   onDuplicateQuote?: (quote: Quote) => void;
-  onOpenMobileMenu?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -53,7 +52,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onQuoteStatusUpdate,
   onDeleteQuote,
   onDuplicateQuote,
-  onOpenMobileMenu,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
@@ -194,7 +192,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           title={getUserGreeting(currentUser)}
           subtitle={`${currentUser?.organization || 'הארגון שלי'} · ${totalCount} הצעות במערכת · ${draftCount} טיוטות · ${approvedCount} אושרו`}
           onNewQuote={onNewQuote}
-          onOpenMobileMenu={onOpenMobileMenu}
         />
       </div>
 

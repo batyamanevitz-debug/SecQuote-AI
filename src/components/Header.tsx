@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Plus, Check, X, ShieldAlert, CheckCircle2, Clock, Menu } from 'lucide-react';
+import { Bell, Plus, Check, X, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
 import { UserItem } from '../types';
 
 interface HeaderProps {
@@ -8,7 +8,6 @@ interface HeaderProps {
   showNewQuoteBtn?: boolean;
   onNewQuote?: () => void;
   currentUser?: UserItem | null;
-  onOpenMobileMenu?: () => void;
 }
 
 interface NotificationItem {
@@ -25,7 +24,6 @@ export const Header: React.FC<HeaderProps> = ({
   showNewQuoteBtn = true,
   onNewQuote,
   currentUser,
-  onOpenMobileMenu,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([
@@ -67,16 +65,6 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="relative z-30 flex items-center justify-between gap-3 sm:gap-4 select-none w-full">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        {onOpenMobileMenu && (
-          <button
-            type="button"
-            onClick={onOpenMobileMenu}
-            aria-label="פתח תפריט ניווט"
-            className="lg:hidden flex-none w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-[#9fd4ff] bg-white/[0.04] border border-[#7dd3fc]/20 hover:bg-[#7dd3fc]/15 transition-colors cursor-pointer active:scale-95"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[#f4f9ff] truncate">
             {title}

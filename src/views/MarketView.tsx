@@ -12,10 +12,9 @@ const nis = (n: number) => '₪' + n.toLocaleString('en-US');
 const pctOf = (n: number) => ((n - MIN) / (MAX - MIN)) * 100;
 
 interface MarketViewProps {
-  onOpenMobileMenu?: () => void;
 }
 
-export const MarketView: React.FC<MarketViewProps> = ({ onOpenMobileMenu }) => {
+export const MarketView: React.FC<MarketViewProps> = () => {
   const [rate, setRate] = useState<number>(4500);
   const [saved, setSaved] = useState<boolean>(false);
 
@@ -46,7 +45,6 @@ export const MarketView: React.FC<MarketViewProps> = ({ onOpenMobileMenu }) => {
         <Header
           title="ניהול מדדי שוק ותעריפים"
           subtitle="Manday · עודכן לאחרונה ב-12/05/2024"
-          onOpenMobileMenu={onOpenMobileMenu}
         />
       </div>
 

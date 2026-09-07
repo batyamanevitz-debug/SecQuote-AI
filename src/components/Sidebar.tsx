@@ -5,7 +5,6 @@ import {
   Users,
   Settings,
   LogOut,
-  X,
   Building2,
   ChevronUp,
   Check,
@@ -17,8 +16,6 @@ interface SidebarProps {
   currentView: ViewMode;
   onNavigate: (view: ViewMode) => void;
   onLogout: () => void;
-  isOpenMobile?: boolean;
-  onCloseMobile?: () => void;
   currentUser?: UserItem | null;
   users?: UserItem[];
   onSwitchUser?: (userId: string) => void;
@@ -28,8 +25,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   onNavigate,
   onLogout,
-  isOpenMobile = false,
-  onCloseMobile,
   currentUser,
   users = [],
   onSwitchUser,
@@ -69,29 +64,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleItemClick = (view: ViewMode) => {
     onNavigate(view);
-    if (onCloseMobile) {
-      onCloseMobile();
-    }
   };
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
-      {isOpenMobile && (
-        <div
-          onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden transition-opacity"
-          aria-hidden="true"
-        />
-      )}
-
       {/* Sidebar Container */}
-      <aside
-        className={`fixed lg:static top-0 bottom-0 right-0 z-50 lg:z-20 w-[260px] lg:w-[240px] flex-none self-stretch flex flex-col px-3.5 py-5 sm:py-6 bg-gradient-to-b from-[#0d152a] to-[#080d1c] border-l border-[#7dd3fc]/15 backdrop-blur-2xl select-none transition-transform duration-300 ease-in-out ${
-          isOpenMobile ? 'translate-x-0 shadow-[-10px_0_30px_rgba(0,0,0,0.8)]' : 'translate-x-full lg:translate-x-0'
-        }`}
-      >
-        {/* Brand Header & Mobile Close Button */}
+      {/* Desktop only. On phones and tablets the floating bottom bar is the
+          sole navigation, so there is no drawer to slide in. */}
+      <aside className="hidden lg:flex static z-20 w-[240px] flex-none self-stretch flex-col px-3.5 py-5 sm:py-6 bg-gradient-to-b from-[#0d152a] to-[#080d1c] border-l border-[#7dd3fc]/15 backdrop-blur-2xl select-none">
+        {/* Brand Header */}
         <div className="relative flex items-center justify-center pt-1 pb-6 w-full">
           <div className="cursor-pointer flex justify-center w-full" onClick={() => handleItemClick('dashboard')}>
             <Logo
@@ -101,16 +82,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               style={{ width: 177 }}
             />
           </div>
-          {onCloseMobile && (
-            <button
-              type="button"
-              onClick={onCloseMobile}
-              aria-label="סגור תפריט"
-              className="lg:hidden absolute left-0 top-1 p-2 rounded-xl text-[#9fd4ff] hover:bg-white/10 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
         </div>
 
         {/* Nav List */}
