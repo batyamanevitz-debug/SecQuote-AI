@@ -1,5 +1,6 @@
 import React from 'react';
-import { Quote, ScopeComponent } from '../types';
+import { Quote, ScopeComponent, ClientApproval } from '../types';
+import { SignaturePad } from './SignaturePad';
 import { getOrgFinancialDetails } from '../data/mockData';
 
 export interface ElixSowDocumentProps {
@@ -27,6 +28,10 @@ export interface ElixSowDocumentProps {
   activePage?: number; // 0 = all pages, 1..5 = specific page
   onClientNameChange?: (name: string) => void;
   editableClientName?: boolean;
+  /** Lets the recipient of the share link fill the approval block and sign. */
+  clientFillable?: boolean;
+  clientApproval?: ClientApproval;
+  onClientApprovalChange?: (patch: Partial<ClientApproval>) => void;
   organizationName?: string;
   authorName?: string;
   authorEmail?: string;
@@ -56,6 +61,9 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   activePage = 0,
   onClientNameChange,
   editableClientName = false,
+  clientFillable = false,
+  clientApproval,
+  onClientApprovalChange,
   organizationName: propOrganizationName,
   authorName: propAuthorName,
   authorEmail: propAuthorEmail,
@@ -97,6 +105,34 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   const bankNumber = propBankNumber || quote?.bankNumber || fin.bankNumber;
   const branchNumber = propBranchNumber || quote?.branchNumber || fin.branchNumber;
   const beneficiaryName = propBeneficiaryName || quote?.beneficiaryName || fin.beneficiaryName;
+  const approval: ClientApproval = clientApproval || quote?.clientApproval || {};
+  const setApproval = (patch: Partial<ClientApproval>) =>
+    onClientApprovalChange && onClientApprovalChange(patch);
+
+  /** One labelled line: an input while the client is filling, else the value. */
+  const approvalLine = (
+    label: string,
+    key: keyof ClientApproval,
+    placeholder = ''
+  ) => (
+    <div className="flex items-baseline">
+      <span className="font-bold text-slate-900 font-sans ml-2 whitespace-nowrap">{label}</span>
+      {clientFillable ? (
+        <input
+          type="text"
+          value={(approval[key] as string) || ''}
+          onChange={(e) => setApproval({ [key]: e.target.value } as Partial<ClientApproval>)}
+          placeholder={placeholder}
+          className="flex-1 min-w-0 border-b border-slate-400 pb-0.5 bg-transparent outline-none focus:border-[#0d6282] font-sans placeholder:text-slate-300"
+        />
+      ) : (
+        <span className="flex-1 border-b border-slate-400 pb-0.5 font-sans">
+          {(approval[key] as string) || '\u00a0'}
+        </span>
+      )}
+    </div>
+  );
+
   const paymentMethod = quote?.paymentMethod || 'העברה בנקאית';
   const quoteNotes = (quote?.quoteNotes || '').trim();
   const authorName = propAuthorName || quote?.authorName || fin.authorName;
@@ -774,41 +810,55 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
               <div className="flex flex-col gap-2.5 text-xs sm:text-sm text-slate-700 font-mono text-right" dir="rtl">
                 <div className="flex items-baseline">
                   <span className="font-bold text-slate-900 font-sans ml-2">שם החברה:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5 font-sans font-semibold">{clientName}</span>
+                  <span className="flex-1 border-b border-slate-400 pb-0.5 font-sans font-semibold">
+                    {approval.companyName || clientName}
+                  </span>
                 </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold text-slate-900 font-sans ml-2">ח.פ:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5">&nbsp;</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold text-slate-900 font-sans ml-2">שם פרטי:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5">&nbsp;</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold text-slate-900 font-sans ml-2">תפקיד:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5">&nbsp;</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold text-slate-900 font-sans ml-2">תאריך:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5">&nbsp;</span>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-bold text-slate-900 font-sans ml-2">כתובת:</span>
-                  <span className="flex-1 border-b border-slate-400 pb-0.5">&nbsp;</span>
-                </div>
+                {approvalLine('ח.פ:', 'companyId', 'מספר ח.פ')}
+                {approvalLine('שם פרטי:', 'signerName', 'שם החותם')}
+                {approvalLine('תפקיד:', 'signerRole', 'תפקיד בחברה')}
+                {approvalLine('תאריך:', 'signedDate', 'תאריך')}
+                {approvalLine('כתובת:', 'address', 'כתובת החברה')}
               </div>
             </div>
           </div>
 
           {/* Bottom Signatures - in RTL right is buyer, left is supplier/sign */}
-          <div className="pt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs sm:text-sm text-right" dir="rtl">
+          <div className="pt-6 border-t border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs sm:text-sm text-right" dir="rtl">
             <div>
               <span className="font-bold text-slate-900">איש קשר מהרכש:</span>
-              <div className="border-b border-slate-400 mt-6">&nbsp;</div>
+              {clientFillable ? (
+                <input
+                  type="text"
+                  value={approval.procurementContact || ''}
+                  onChange={(e) => setApproval({ procurementContact: e.target.value })}
+                  placeholder="שם ופרטי קשר"
+                  className="w-full border-b border-slate-400 mt-6 pb-0.5 bg-transparent outline-none focus:border-[#0d6282] placeholder:text-slate-300"
+                />
+              ) : (
+                <div className="border-b border-slate-400 mt-6 pb-0.5">
+                  {approval.procurementContact || '\u00a0'}
+                </div>
+              )}
             </div>
             <div>
               <span className="font-bold text-slate-900">חתום כאן:</span>
-              <div className="border-b border-slate-400 mt-6">&nbsp;</div>
+              <div className="mt-2">
+                {clientFillable ? (
+                  <SignaturePad
+                    value={approval.signatureDataUrl}
+                    onChange={(dataUrl) => setApproval({ signatureDataUrl: dataUrl })}
+                  />
+                ) : approval.signatureDataUrl ? (
+                  <img
+                    src={approval.signatureDataUrl}
+                    alt="חתימת הלקוח"
+                    className="w-full h-24 object-contain rounded-lg border border-slate-300 bg-white"
+                  />
+                ) : (
+                  <div className="border-b border-slate-400 mt-6">&nbsp;</div>
+                )}
+              </div>
             </div>
           </div>
         </div>

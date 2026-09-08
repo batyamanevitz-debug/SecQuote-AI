@@ -9,6 +9,20 @@ export interface ScopeComponent {
   isCustom?: boolean;
 }
 
+/** What the client filled in and signed on the shared proposal link. */
+export interface ClientApproval {
+  companyName?: string;
+  companyId?: string;
+  signerName?: string;
+  signerRole?: string;
+  signedDate?: string;
+  address?: string;
+  procurementContact?: string;
+  /** PNG data URL of the drawn signature. */
+  signatureDataUrl?: string;
+  approvedAt?: string;
+}
+
 export interface Quote {
   id: string;
   /** Secret token behind the public client link (?doc=<shareToken>). */
@@ -55,6 +69,8 @@ export interface Quote {
   /** ISO timestamps from the database, used for real notification times. */
   createdAt?: string;
   updatedAt?: string;
+  /** Filled by the client through the share link. */
+  clientApproval?: ClientApproval;
 }
 
 export interface ChatMessage {

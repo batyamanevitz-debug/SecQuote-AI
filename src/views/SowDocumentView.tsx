@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { ArrowRight, Printer, Download, FileCheck, Share2, Check, Loader2, FileText, MessageCircle, Mail, Building2 } from 'lucide-react';
-import { Quote, UserItem } from '../types';
+import { Quote, UserItem, ClientApproval } from '../types';
 import { exportElementToPdf } from '../utils/pdfExport';
 import { exportToWord } from '../utils/exportWord';
 import { getOrgFinancialDetails } from '../data/mockData';
@@ -11,6 +11,8 @@ interface SowDocumentViewProps {
   onBack: () => void;
   isPublicView?: boolean;
   onQuoteStatusUpdate?: (quoteId: string, status: 'טיוטה' | 'נשלח' | 'אושר') => void;
+  /** Carries what the client typed and signed back to the approval call. */
+  onClientApprove?: (details: ClientApproval) => void;
   currentUser?: UserItem | null;
 }
 
@@ -19,6 +21,7 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
   onBack,
   isPublicView = false,
   onQuoteStatusUpdate,
+  onClientApprove,
   currentUser,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -27,6 +30,12 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
   const [isClientApproved, setIsClientApproved] = useState(quote?.status === 'אושר');
   const [approvedToast, setApprovedToast] = useState(false);
   const [activePage, setActivePage] = useState<number>(0);
+  // What the client is filling in on the shared link, before approving.
+  const [approvalDraft, setApprovalDraft] = useState<ClientApproval>(() => ({
+    companyName: quote?.client || '',
+    signedDate: new Date().toLocaleDateString('he-IL'),
+    ...(quote?.clientApproval || {}),
+  }));
   const documentRef = useRef<HTMLDivElement | null>(null);
   const fullExportRef = useRef<HTMLDivElement | null>(null);
 
@@ -146,7 +155,10 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
     setIsClientApproved(true);
     setApprovedToast(true);
     const docId = quote?.id || 'Q-2024-001';
-    if (onQuoteStatusUpdate) {
+    // The filled form and signature travel with the approval.
+    if (onClientApprove) {
+      onClientApprove(approvalDraft);
+    } else if (onQuoteStatusUpdate) {
       onQuoteStatusUpdate(docId, 'אושר');
     }
     try {
@@ -355,6 +367,9 @@ export const SowDocumentView: React.FC<SowDocumentViewProps> = ({
           <ElixSowDocument
             quote={quote}
             clientName={clientName}
+            clientFillable={isPublicView && !isClientApproved}
+            clientApproval={approvalDraft}
+            onClientApprovalChange={(patch) => setApprovalDraft((prev) => ({ ...prev, ...patch }))}
             categoryName={quote?.kind}
             totalCost={quote?.rawCost}
             mandays={quote?.mandays}

@@ -277,6 +277,25 @@ export default function App() {
   const handleQuoteStatusUpdate = (quoteId: string, newStatus: QuoteStatus) =>
     persistStatus(quoteId, newStatus, `סטטוס ההצעה עודכן ל-${newStatus} ✓`);
 
+  /**
+   * The client pressed approve on the shared link. Their filled form and
+   * signature go with it, through the token-scoped function.
+   */
+  const handleClientApprove = async (details: import('./types').ClientApproval) => {
+    const token = selectedQuoteForSow?.shareToken || shareTokenFromUrl;
+    if (!token) {
+      showToast('לא ניתן לאשר: חסר מזהה מסמך');
+      return;
+    }
+    try {
+      const saved = await db.approveSharedQuote(token, details as Record<string, unknown>);
+      if (saved) setSelectedQuoteForSow(saved);
+      showToast('ההצעה אושרה ונחתמה בהצלחה ✓');
+    } catch (err) {
+      showToast(`האישור לא נשמר: ${(err as Error).message}`);
+    }
+  };
+
   const handleViewSow = (quote: Quote) => {
     setIsPublicClientView(false);
     setSelectedQuoteForSow(quote);
@@ -563,6 +582,7 @@ export default function App() {
           setCurrentView(mode === 'live' || mode === 'demo' ? 'dashboard' : 'auth');
         }}
         onQuoteStatusUpdate={handleQuoteStatusUpdate}
+        onClientApprove={handleClientApprove}
       />
     );
   }

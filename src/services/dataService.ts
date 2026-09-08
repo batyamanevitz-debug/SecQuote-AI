@@ -51,6 +51,7 @@ function rowToQuote(r: QuoteRow): Quote {
     quoteNotes: r.quote_notes || undefined,
     createdAt: r.created_at || undefined,
     updatedAt: r.updated_at || undefined,
+    clientApproval: r.client_approval || undefined,
   };
 }
 
@@ -174,9 +175,15 @@ export async function fetchSharedQuote(token: string): Promise<Quote | null> {
  * Approves a proposal from the client-facing link. The visitor has no session,
  * so this goes through a token-scoped function rather than a table write.
  */
-export async function approveSharedQuote(token: string): Promise<Quote | null> {
+export async function approveSharedQuote(
+  token: string,
+  details?: Record<string, unknown>
+): Promise<Quote | null> {
   if (!isUuid(token)) return null;
-  const { data, error } = await supabase.rpc('approve_shared_quote', { token });
+  const { data, error } = await supabase.rpc('approve_shared_quote', {
+    token,
+    details: details ?? null,
+  });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return row ? rowToQuote(row) : null;
