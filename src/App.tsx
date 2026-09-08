@@ -59,6 +59,8 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState<boolean>(false);
+  /** quote ids this account shared out, keyed by lowercased member email. */
+  const [sharesByEmail, setSharesByEmail] = useState<Record<string, string[]>>({});
 
   const isDemo = mode === 'demo';
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,15 +172,20 @@ export default function App() {
           organization: (authUser?.user_metadata?.organization as string) || '',
         });
 
-        const [loadedQuotes, loadedTeam] = await Promise.all([
+        const [loadedQuotes, loadedTeam, sharedWithMe, granted] = await Promise.all([
           db.fetchQuotes(authUserId),
           db.fetchTeam(authUserId),
+          db.fetchQuotesSharedWithMe(profile.email),
+          db.fetchAllShares(authUserId),
         ]);
 
         if (cancelled) return;
         setCurrentUser(profile);
-        setQuotes(loadedQuotes);
+        // Quotes others opened up to me sit alongside my own, flagged read-only.
+        const mine = new Set(loadedQuotes.map((q) => q.id));
+        setQuotes([...loadedQuotes, ...sharedWithMe.filter((q) => !mine.has(q.id))]);
         setTeam(loadedTeam);
+        setSharesByEmail(granted);
         setCurrentView((v) => (v === 'auth' ? 'dashboard' : v));
         showToast(`ברוך/ה הבא/ה, ${profile.name} ✓`);
       } catch (err) {
@@ -425,6 +432,25 @@ export default function App() {
     }
   };
 
+  /** Sets exactly which of my quotes a team member may open. */
+  const handleSetShares = async (memberEmail: string, quoteIds: string[]) => {
+    const email = memberEmail.trim().toLowerCase();
+    setSharesByEmail((prev) => ({ ...prev, [email]: quoteIds }));
+
+    if (isDemo || !authUserId) return;
+
+    try {
+      await db.setSharesForMember(authUserId, email, quoteIds);
+      showToast(
+        quoteIds.length
+          ? `${quoteIds.length} הצעות שותפו עם ${email} ✓`
+          : `הגישה של ${email} להצעות בוטלה ✓`
+      );
+    } catch (err) {
+      showToast(`עדכון ההרשאות נכשל: ${(err as Error).message}`);
+    }
+  };
+
   /* ---------------------------- team actions ---------------------------- */
 
   const handleAddUser = async (user: Omit<UserItem, 'id' | 'initials' | 'avatar' | 'joined'>) => {
@@ -666,6 +692,9 @@ export default function App() {
           {currentView === 'users' && (
             <UsersView
               users={usersForManagement}
+              quotes={quotes.filter((q) => !q.sharedWithMe)}
+              sharesByEmail={sharesByEmail}
+              onSetShares={handleSetShares}
               currentUser={currentUser}
               onSwitchUser={isDemo ? handleSwitchUser : undefined}
               onAddUser={handleAddUser}

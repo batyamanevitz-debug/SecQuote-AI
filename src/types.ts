@@ -48,6 +48,8 @@ export interface Quote {
   paymentMethod?: string;
   /** Free text the user asked to append to this proposal. */
   quoteNotes?: string;
+  /** True when this quote belongs to someone else and was shared with me. */
+  sharedWithMe?: boolean;
 }
 
 export interface ChatMessage {

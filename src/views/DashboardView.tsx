@@ -619,6 +619,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   {/* Mobile Actions Toolbar */}
+                  {row.sharedWithMe ? (
+                    <div className="pt-0.5 flex items-center gap-2 text-[11px] text-[#7dd3fc]/80">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>הצעה ששותפה איתך · צפייה בלבד</span>
+                      <button
+                        type="button"
+                        onClick={() => onViewSow(row)}
+                        className="mr-auto px-2.5 py-1 rounded-lg bg-[#22d3ee]/15 border border-[#22d3ee]/35 text-[#67e8f9] font-bold cursor-pointer"
+                      >
+                        פתח מסמך
+                      </button>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-4 gap-1.5 pt-0.5">
                     <button
                       type="button"
@@ -655,6 +668,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span>SOW</span>
                     </button>
                   </div>
+                  )}
                 </div>
               );
             })}
@@ -774,6 +788,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Actions */}
+                    {row.sharedWithMe ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#22d3ee]/10 text-[#7dd3fc] border border-[#22d3ee]/25">
+                          <Eye className="w-3.5 h-3.5" />
+                          צפייה בלבד
+                        </span>
+                        <button
+                          type="button"
+                          title="פתח מסמך"
+                          onClick={() => onViewSow(row)}
+                          className="cursor-pointer w-8 h-8 rounded-lg flex items-center justify-center text-[#7dd3fc] hover:bg-[#38bdf8]/20 hover:text-white border border-transparent hover:border-[#38bdf8]/35 transition-all"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
@@ -820,6 +850,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </button>
                       )}
                     </div>
+                    )}
                   </div>
                 );
               })}

@@ -177,6 +177,94 @@ export async function approveSharedQuote(token: string): Promise<Quote | null> {
   return row ? rowToQuote(row) : null;
 }
 
+/* --------------------------- quote sharing --------------------------- */
+
+/** Quote ids the owner has shared with this team member's email. */
+export async function fetchSharesForMember(
+  ownerId: string,
+  memberEmail: string
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('quote_shares')
+    .select('quote_id')
+    .eq('owner_id', ownerId)
+    .eq('member_email', memberEmail.trim().toLowerCase());
+  if (error) throw error;
+  return (data || []).map((r: { quote_id: string }) => r.quote_id);
+}
+
+/** Every share this owner has granted, grouped by member email. */
+export async function fetchAllShares(
+  ownerId: string
+): Promise<Record<string, string[]>> {
+  const { data, error } = await supabase
+    .from('quote_shares')
+    .select('quote_id, member_email')
+    .eq('owner_id', ownerId);
+  if (error) throw error;
+  const out: Record<string, string[]> = {};
+  for (const r of (data || []) as { quote_id: string; member_email: string }[]) {
+    (out[r.member_email] ||= []).push(r.quote_id);
+  }
+  return out;
+}
+
+/**
+ * Makes the member's access match `quoteIds` exactly — grants what is new and
+ * revokes what was removed, so unchecking a box actually takes access away.
+ */
+export async function setSharesForMember(
+  ownerId: string,
+  memberEmail: string,
+  quoteIds: string[]
+): Promise<void> {
+  const email = memberEmail.trim().toLowerCase();
+  if (!email) return;
+
+  const current = await fetchSharesForMember(ownerId, email);
+  const toAdd = quoteIds.filter((id) => !current.includes(id) && isUuid(id));
+  const toRemove = current.filter((id) => !quoteIds.includes(id));
+
+  if (toAdd.length) {
+    const { error } = await supabase.from('quote_shares').insert(
+      toAdd.map((quote_id) => ({ quote_id, owner_id: ownerId, member_email: email }))
+    );
+    if (error) throw error;
+  }
+
+  if (toRemove.length) {
+    const { error } = await supabase
+      .from('quote_shares')
+      .delete()
+      .eq('owner_id', ownerId)
+      .eq('member_email', email)
+      .in('quote_id', toRemove);
+    if (error) throw error;
+  }
+}
+
+/**
+ * Quotes other people shared with the signed-in user. RLS decides what comes
+ * back, so this cannot return anything that was not granted.
+ */
+export async function fetchQuotesSharedWithMe(myEmail: string): Promise<Quote[]> {
+  const email = (myEmail || '').trim().toLowerCase();
+  if (!email) return [];
+
+  const { data: shares, error: shareErr } = await supabase
+    .from('quote_shares')
+    .select('quote_id')
+    .eq('member_email', email);
+  if (shareErr) throw shareErr;
+
+  const ids = (shares || []).map((r: { quote_id: string }) => r.quote_id);
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase.from('quotes').select('*').in('id', ids);
+  if (error) throw error;
+  return (data || []).map(rowToQuote).map((q) => ({ ...q, sharedWithMe: true }));
+}
+
 /* ------------------------------ profile ------------------------------ */
 
 function rowToUser(r: ProfileRow | TeamRow): UserItem {

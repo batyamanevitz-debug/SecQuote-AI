@@ -18,12 +18,18 @@ import {
   AlertTriangle,
   Users,
 } from 'lucide-react';
-import { UserItem, AccessLevel } from '../types';
+import { UserItem, AccessLevel, Quote } from '../types';
 import { ACCESS_OPTIONS, getOrgFinancialDetails } from '../data/mockData';
 import { isHebrewFemaleName } from '../utils/greeting';
 
 interface UsersViewProps {
   users: UserItem[];
+  /** The owner's quotes, offered for sharing when editing a member. */
+  quotes?: Quote[];
+  /** quote ids already shared, keyed by lowercased member email. */
+  sharesByEmail?: Record<string, string[]>;
+  /** Persists the exact set of quotes a member may see. */
+  onSetShares?: (memberEmail: string, quoteIds: string[]) => void;
   onAddUser: (user: Omit<UserItem, 'id' | 'initials' | 'avatar' | 'joined'>) => void;
   onUpdateUser: (id: string, updates: Partial<UserItem>) => void;
   onDeleteUser?: (id: string) => void;
@@ -33,6 +39,9 @@ interface UsersViewProps {
 
 export const UsersView: React.FC<UsersViewProps> = ({
   users,
+  quotes = [],
+  sharesByEmail = {},
+  onSetShares,
   onAddUser,
   onUpdateUser,
   onDeleteUser,
@@ -48,6 +57,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
   // Interactive UI State
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  /** Quotes ticked for the member currently being added or edited. */
+  const [sharedQuoteIds, setSharedQuoteIds] = useState<string[]>([]);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
 
@@ -124,6 +135,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setNewBeneficiaryName(defaultFin.beneficiaryName);
     setNewRole('Security Consultant');
     setNewAccess('edit');
+    setSharedQuoteIds([]);
     setIsModalOpen(true);
   };
 
@@ -140,6 +152,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setNewBranchNumber(u.branchNumber || fin.branchNumber);
     setNewBankAccountNumber(u.bankAccountNumber || fin.bankAccountNumber);
     setNewBeneficiaryName(u.beneficiaryName || fin.beneficiaryName);
+    setSharedQuoteIds(sharesByEmail[(u.email || '').trim().toLowerCase()] || []);
     setIsModalOpen(true);
   };
 
@@ -181,6 +194,10 @@ export const UsersView: React.FC<UsersViewProps> = ({
         status: 'active',
       });
     }
+
+    // Access is granted against the email, so it applies whether or not this
+    // person has registered yet.
+    if (onSetShares) onSetShares(newEmail.trim().toLowerCase(), sharedQuoteIds);
     setNewName('');
     setNewEmail('');
     setNewOrg('');
@@ -1006,6 +1023,82 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Which of my quotes this person may open */}
+              <div className="pt-3 border-t border-[#7dd3fc]/15 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-bold text-[#7dd3fc]">
+                    אילו הצעות מחיר המשתמש יראה?
+                  </span>
+                  {quotes.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSharedQuoteIds(quotes.map((q) => q.id))}
+                        className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
+                      >
+                        הכל
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSharedQuoteIds([])}
+                        className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
+                      >
+                        אף אחת
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-[#cbe1ff]/50 leading-relaxed">
+                  המשתמש יראה את ההצעות המסומנות כשייכנס לחשבון שלו, לצפייה בלבד.
+                  עריכה ומחיקה נשארות רק אצלך.
+                </p>
+
+                {quotes.length === 0 ? (
+                  <p className="text-[11px] text-amber-300/80">
+                    אין עדיין הצעות מחיר לשיתוף.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {quotes.map((q) => {
+                      const checked = sharedQuoteIds.includes(q.id);
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() =>
+                            setSharedQuoteIds((prev) =>
+                              prev.includes(q.id)
+                                ? prev.filter((x) => x !== q.id)
+                                : [...prev, q.id]
+                            )
+                          }
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                            checked
+                              ? 'bg-[#22d3ee]/15 border-[#22d3ee]/40'
+                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]'
+                          }`}
+                        >
+                          <span
+                            className={`flex-none w-4 h-4 rounded-md border flex items-center justify-center ${
+                              checked ? 'bg-[#22d3ee] border-[#22d3ee]' : 'border-[#7dd3fc]/40'
+                            }`}
+                          >
+                            {checked && <Check className="w-3 h-3 text-[#04121f]" />}
+                          </span>
+                          <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#eaf4ff] truncate">
+                            {q.client}
+                          </span>
+                          <span className="flex-none text-[11px] text-[#7dd3fc]/70 font-mono">
+                            {q.cost}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2.5 mt-3 pt-3 border-t border-[#7dd3fc]/15">
