@@ -227,7 +227,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </button>
 
                     {isUserSwitcherOpen && (
-                      <div className="absolute left-0 top-[calc(100%+6px)] z-40 min-w-[260px] p-2 rounded-2xl border border-[#22d3ee]/35 bg-[#091020]/95 shadow-[0_24px_50px_rgba(0,0,0,0.9)] backdrop-blur-xl animate-in fade-in zoom-in-95">
+                      // Anchored to the button's right edge so it opens inward
+                      // in RTL; left-0 pushed it off the screen.
+                      <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-[min(280px,calc(100vw-2rem))] p-2 rounded-2xl border border-[#22d3ee]/35 bg-[#091020]/95 shadow-[0_24px_50px_rgba(0,0,0,0.9)] backdrop-blur-xl animate-in fade-in zoom-in-95">
                         <div className="px-2.5 py-1.5 text-[11px] font-bold text-[#7dd3fc] border-b border-white/10 mb-1 flex items-center justify-between">
                           <span>משתמשים פעילים במערכת</span>
                           {onNavigate && (
