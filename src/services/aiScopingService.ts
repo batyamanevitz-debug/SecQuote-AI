@@ -119,7 +119,16 @@ export function getInitialAiGreeting(
 }
 
 // Client service calling backend or dynamic fallback
-export async function sendScopingMessage(params: {
+/**
+ * Advances the scoping chat. Runs entirely in the browser against the local
+ * question bank — no network call per message.
+ *
+ * The questions, their order and the man-day weights are all deterministic, so
+ * a model was never needed to walk the questionnaire; asking one per keystroke
+ * only spent tokens to reproduce a fixed script. The single model call now
+ * happens once, at the end, in generateFinalProposal().
+ */
+export function advanceScoping(params: {
   config: ScopingConfig;
   template: ProjectTemplate;
   chatHistory: { role: 'ai' | 'user'; text: string }[];
@@ -128,103 +137,70 @@ export async function sendScopingMessage(params: {
   currentComponents: ScopeComponent[];
   customRequirements: string[];
   dailyRate: number;
-}): Promise<AiScopingResponse> {
-  const {
-    config,
-    template,
-    chatHistory,
-    userMessage,
-    currentMandays,
-    currentComponents,
-    customRequirements,
-    dailyRate,
-  } = params;
+}): AiScopingResponse {
+  return runLocalIntelligentScopingEngine(params);
+}
 
-  // Try calling the server-side API first
+/** Everything gathered during the questionnaire, sent as one payload. */
+export interface ProposalRequest {
+  config: ScopingConfig;
+  template: ProjectTemplate;
+  clientName: string;
+  targetSystem: string;
+  mandays: number;
+  dailyRate: number;
+  components: ScopeComponent[];
+  customRequirements: string[];
+  scopeDetails: Record<string, string | undefined>;
+  transcript: { role: 'ai' | 'user'; text: string }[];
+}
+
+export interface ProposalResult {
+  summary: string;
+  components: ScopeComponent[];
+  /** True when the text came from the model rather than the local engine. */
+  fromModel: boolean;
+}
+
+/**
+ * The one and only model call in the flow. Sends the collected answers and
+ * asks for the written summary; falls back to the locally composed text when
+ * no key is configured or the call fails, so the wizard always completes.
+ */
+export async function generateFinalProposal(
+  req: ProposalRequest
+): Promise<ProposalResult> {
+  const localSummary =
+    `מבדק ${req.config.categoryName} במודל ${req.config.testType} על גבי ${
+      req.config.staging ? 'סביבת Staging' : 'סביבת Production'
+    }, ברמת מורכבות ${req.config.complexity}, מותאם לתבנית ${req.template.name}.`;
+
   try {
-    const response = await fetch('/api/ai/scope', {
+    const response = await fetch('/api/ai/proposal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        config,
-        template,
-        chatHistory,
-        userMessage,
-        currentMandays,
-        customRequirements,
-      }),
+      body: JSON.stringify(req),
     });
 
     if (response.ok) {
       const result = await response.json();
-      if (result.success && result.data && !result.fallback) {
-        const d = result.data;
-        const newReq = d.newCustomRequirement;
-        const updatedReqs = newReq
-          ? [...customRequirements, newReq]
-          : customRequirements;
-
-        let finalMd = d.totalMandays || currentMandays + (d.mandaysDelta || 0);
-        let components = currentComponents;
-
-        if (d.scopeSummary?.components?.length) {
-          components = d.scopeSummary.components;
-        } else if (newReq) {
-          components = [
-            ...components,
-            {
-              name: `בדיקה ייעודית: ${newReq}`,
-              md: 1.5,
-              desc: `הורחב לבקשת הלקוח: ${newReq}`,
-              isCustom: true,
-            },
-          ];
-          finalMd += 1.5;
-        }
-
-        const totalCost = finalMd * dailyRate;
-
+      if (result?.success && result?.summary) {
         return {
-          aiMessage: d.aiMessage,
-          nextQuestion: d.nextQuestion,
-          options: d.options || [],
-          mandaysDelta: d.mandaysDelta || 0,
-          totalMandays: finalMd,
-          newCustomRequirement: newReq,
-          detectedClientName: d.detectedClientName || null,
-          detectedTargetSystem: d.detectedTargetSystem || null,
-          scopeDetails: d.scopeDetails || undefined,
-          components,
-          isComplete: d.isComplete || false,
-          proposal: d.isComplete
-            ? {
-                summary:
-                  d.scopeSummary?.summaryText ||
-                  `מבדק ${config.categoryName} מותאם אישית לתבנית ${template.name}`,
-                components,
-                totalMd: finalMd,
-                totalCost,
-              }
-            : undefined,
+          summary: String(result.summary),
+          components: Array.isArray(result.components) && result.components.length
+            ? result.components
+            : req.components,
+          fromModel: true,
         };
       }
     }
-  } catch (err) {
-    console.warn('API call failed or in offline mode, falling back to local engine:', err);
+  } catch {
+    /* offline, no key, or static hosting — fall through */
   }
 
-  // Local Intelligent Scoping Engine (Guaranteed 100% reliability & responsiveness)
-  return runLocalIntelligentScopingEngine({
-    config,
-    template,
-    chatHistory,
-    userMessage,
-    currentMandays,
-    currentComponents,
-    customRequirements,
-    dailyRate,
-  });
+  return { summary: localSummary, components: req.components, fromModel: false };
 }
+
 
 function runLocalIntelligentScopingEngine(params: {
   config: ScopingConfig;

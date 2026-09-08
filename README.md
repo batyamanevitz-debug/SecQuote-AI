@@ -22,13 +22,14 @@ npm run dev
 ```
 VITE_SUPABASE_URL="https://<project>.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
-GEMINI_API_KEY=""
+ANTHROPIC_API_KEY=""
 ```
 
 - שני מפתחות ה-Supabase נחשפים לדפדפן בכוונה. מה שמגן על הנתונים הוא
   Row Level Security במסד הנתונים, לא סודיות המפתח.
-- `GEMINI_API_KEY` הוא רשות. בלעדיו אשף האפיון עובר אוטומטית למנוע האפיון
-  המקומי שמובנה בקוד.
+- `ANTHROPIC_API_KEY` הוא רשות. השאלון כולו רץ בדפדפן ואינו שולח דבר; קריאה
+  אחת בלבד יוצאת בעת הפקת ההצעה, למודל `claude-haiku-4-5`. בלי מפתח, הסיכום
+  מנוסח מקומית וההצעה נוצרת כרגיל.
 
 ## מבנה הנתונים (Supabase)
 

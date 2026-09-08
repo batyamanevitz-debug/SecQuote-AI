@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -9,166 +9,117 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// The payload carries the whole questionnaire, so allow a little headroom.
+app.use(express.json({ limit: "1mb" }));
 
-// Lazy-initialize GoogleGenAI
-let aiClient: GoogleGenAI | null = null;
-function getAiClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+/**
+ * Claude Haiku 4.5 — the current fast, low-cost model.
+ *
+ * Note for anyone revisiting this: claude-3-haiku-20240307 was deprecated and
+ * retired on 2026-04-19. Pointing this at that id would fail outright.
+ */
+const MODEL = "claude-haiku-4-5";
+
+let anthropic: Anthropic | null = null;
+function getClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
-  if (!aiClient) {
-    aiClient = new GoogleGenAI({ apiKey });
-  }
-  return aiClient;
+  if (!anthropic) anthropic = new Anthropic({ apiKey });
+  return anthropic;
 }
 
-// Health check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+  res.json({ status: "ok", model: MODEL, configured: !!getClient(), time: new Date().toISOString() });
 });
 
-// AI Scoping API endpoint with resilient multi-model fallback
-// Prioritize ultra-fast lightweight models (flash-lite) to avoid 503 high demand spikes
-const CANDIDATE_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-flash-latest',
-  'gemini-3.8-flash',
-];
-
-async function generateScopingWithFallback(
-  ai: GoogleGenAI,
-  userPrompt: string,
-  systemInstruction: string
-): Promise<string | null> {
-  for (const model of CANDIDATE_MODELS) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: userPrompt,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-        },
-      });
-      if (response.text) {
-        return response.text;
-      }
-    } catch {
-      // If model is busy, throttled or experiencing high demand, seamlessly attempt next model
-      continue;
-    }
+/**
+ * The single model call of the whole flow.
+ *
+ * The questionnaire itself runs entirely in the browser against a fixed
+ * question bank, so nothing is sent while the user answers. This endpoint is
+ * hit once, when the quote is produced, with everything that was collected.
+ */
+app.post("/api/ai/proposal", async (req, res) => {
+  const client = getClient();
+  if (!client) {
+    // No key configured — the client composes the summary locally.
+    return res.status(200).json({
+      success: false,
+      fallback: true,
+      message: "ANTHROPIC_API_KEY not configured; using the local summary.",
+    });
   }
 
-  // Gracefully return null so caller activates the resilient local scoping engine
-  return null;
-}
-
-app.post("/api/ai/scope", async (req, res) => {
   try {
     const {
       config,
       template,
-      chatHistory,
-      userMessage,
-      currentMandays,
+      clientName,
+      targetSystem,
+      mandays,
+      dailyRate,
+      components,
       customRequirements,
-    } = req.body;
+      scopeDetails,
+    } = req.body ?? {};
 
-    const ai = getAiClient();
-    if (!ai) {
-      return res.status(200).json({
-        fallback: true,
-        message: "GEMINI_API_KEY not configured on server, using local intelligent scoping engine.",
-      });
+    const system =
+      "אתה יועץ סייבר בכיר שכותב סיכומי אפיון להצעות מחיר בעברית מקצועית. " +
+      "החזר JSON תקין בלבד, ללא markdown, במבנה: " +
+      '{"summary": "פסקה אחת עד שתיים המסכמת את האפיון", "components": [{"name": "...", "md": 2, "desc": "..."}]}. ' +
+      "שמור על סך ימי העבודה הנתון — אל תשנה אותו.";
+
+    const userPrompt = [
+      `סוג מבדק: ${config?.categoryName}`,
+      `מודל בדיקה: ${config?.testType} · מורכבות: ${config?.complexity}`,
+      `סביבה: ${config?.staging ? "Staging" : "Production"}`,
+      `תבנית: ${template?.name}`,
+      `לקוח: ${clientName || "לא צוין"}`,
+      `מערכת יעד: ${targetSystem || "לא צוינה"}`,
+      `היקף: ${mandays} ימי עבודה בתעריף ${dailyRate}₪ ליום`,
+      `רכיבים: ${JSON.stringify(components ?? [])}`,
+      `דרישות מיוחדות: ${JSON.stringify(customRequirements ?? [])}`,
+      `פרטי אפיון: ${JSON.stringify(scopeDetails ?? {})}`,
+      "",
+      "כתוב את הסיכום ואת פירוט הרכיבים.",
+    ].join("\n");
+
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      system,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    // content is a union — narrow before reading .text
+    let raw = "";
+    for (const b of message.content) {
+      if (b.type === "text") raw += b.text;
     }
 
-    const systemInstruction = `
-אתה עוזר AI מקצועי בכיר להפקת הצעות מחיר וסקופינג (Scoping) למערכת בדיקות סייבר (SecQuote AI).
-מטרתך: לנהל שיחה חכמה, חדה וממוקדת בעברית עם הלקוח/יועץ הסייבר, לקלוט את תצורת הבדיקה והתבנית, לשאול שאלות דינמיות ממוקדות אחת-אחת, לשלב מיד הערות חופשיות ודרישות מיוחדות בחישוב ההיקף וימי העבודה (MD), ובסיום להפיק הצעת מחיר מובנית.
+    const cleaned = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
 
-הנתונים שנבחרו:
-- סוג מבדק: ${config?.categoryName || 'תשתיתי'} (${config?.categoryKey || 'infra'})
-- סביבה: ${config?.staging ? 'Staging (מעבדה)' : 'Production (סביבת ייצור חי)'}
-- סוג בדיקה: ${config?.testType || 'Blackbox'}
-- מורכבות רשת: ${config?.complexity || 'בינונית'}
-- תבנית עסקית: ${template?.name || 'סטארט-אפ MVP'} (${template?.desc || ''})
-- דרישות מיוחדות שנרשמו עד כה: ${(customRequirements || []).join(', ') || 'אין עדיין'}
-- ימי עבודה בסיסיים נוכחיים: ${currentMandays || 5} MD
-
-הנחיות חמורות להתנהגות:
-1. ענה תמיד בעברית מקצועית, רהוטה וקולעת (במונחי סייבר ואבטחת מידע מקובלים בישראל: PT, Red Team, Whitebox, API, Active Directory, SOC 2 וכו').
-2. אם הלקוח מקליד בקשה מיוחדת (למשל "להוסיף בדיקה מיוחדת לשרת ספציפי" או בדיקה של שרת תשלומים, ענן, או עומס) - זהה אותה מיד, אשר ששילבת אותה, וציין כמה MD הוספת עבורה.
-3. זהה מתוך דברי המשתמש שם לקוח (למשל "עבור אל על", "הלקוח הוא Wix", "חברת הביטוח הראל", "בנק הפועלים") או שם מערכת/סביבה ספציפית (כגון "WordPress", "אפליקציית iOS", "תשתית ענן AWS", "שרת תשלומים").
-4. שמור על שאלות ממוקדות שלב-אחר-שלב (לא להעמיס שאלונים ענקיים). ספק 2-4 אפשרויות בחירה מהירות (options) כפתורים למענה מהיר, אך אפשר גם טקסט חופשי.
-5. החזר תמיד תשובה במבנה JSON תקני בלבד (ללא markdown מסביב, רק אובייקט JSON תקני) עם המפתחות:
-{
-  "aiMessage": "טקסט התגובה של ה-AI ללקוח",
-  "nextQuestion": "השאלה הבאה או null אם האפיון הושלם",
-  "options": ["אפשרות 1", "אפשרות 2", "אפשרות 3"],
-  "mandaysDelta": 0, // שינוי בימי עבודה (למשל +1, +2 או 0) בעקבות התשובה
-  "totalMandays": 8, // הערכת סך ימי עבודה מעודכנת
-  "newCustomRequirement": "תיאור קצר של דרישה מיוחדת שזוהתה, או null",
-  "detectedClientName": "שם הלקוח שחולץ מטקסט המשתמש או null אם לא צוין",
-  "detectedTargetSystem": "שם המערכת או סביבת היעד שנמסרה (למשל: סביבת WordPress, אפליקציית מובייל, ענן AWS) או null",
-  "scopeDetails": {
-    "environment": "תיאור הסביבה הנבדקת כפי שהוגדרה בשיחה",
-    "roles": "תפקידים או רמות הרשאה שסוכמו לבדיקה (למשל: אורח, מנהל וכו')",
-    "endpointsOrIps": "היקף כתובות IP או endpoints",
-    "testingHours": "שעות בדיקה או חלונות זמן שהוגדרו",
-    "criticalSystems": "מערכות קריטיות ודגשים"
-  },
-  "isComplete": false, // true אם סיימנו את שלב השאלות ומוכנים להצעת מחיר
-  "scopeSummary": {
-    "summaryText": "סיכום אפיון",
-    "components": [
-      { "name": "שם הרכיב", "md": 2, "desc": "פירוט מה נבדק" }
-    ]
-  }
-}
-`;
-
-    const userPrompt = `
-היסטוריית שיחה:
-${(chatHistory || [])
-  .map((m: any) => `${m.role === 'user' ? 'לקוח' : 'SecQuote AI'}: ${m.text}`)
-  .join('\n')}
-
-הודעה חדשה מהלקוח: "${userMessage}"
-ימי עבודה נוכחיים: ${currentMandays} MD.
-נא עבד את המידע, התאם את השאלה הבאה או סכם את האפיון, ועדכן את ה-MD במידת הצורך.
-`;
-
-    let rawText = '';
+    let parsed: { summary?: string; components?: unknown } = {};
     try {
-      rawText = await generateScopingWithFallback(ai, userPrompt, systemInstruction);
-    } catch (genError: any) {
-      console.warn(
-        "[SecQuote AI] Remote models temporarily busy (503/load), engaging local intelligent engine seamlessly:",
-        genError?.message || genError
-      );
-      return res.status(200).json({
-        fallback: true,
-        message: "AI model busy, seamlessly activated local engine.",
-      });
-    }
-
-    const cleanedText = (rawText || '{}')
-      .replace(/^```json\s*/i, '')
-      .replace(/\s*```$/, '')
-      .trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanedText);
+      parsed = JSON.parse(cleaned);
     } catch {
-      parsed = { aiMessage: cleanedText, isComplete: false };
+      // Model returned prose rather than JSON — still usable as the summary.
+      parsed = { summary: cleaned };
     }
 
-    return res.json({ success: true, data: parsed });
-  } catch (error: any) {
+    return res.json({
+      success: true,
+      summary: parsed.summary ?? cleaned,
+      components: Array.isArray(parsed.components) ? parsed.components : components,
+      usage: message.usage,
+    });
+  } catch (error) {
+    // Never block the wizard on the model — the client falls back locally.
+    console.warn("[SecQuote] proposal generation failed:", (error as Error)?.message);
     return res.status(200).json({
+      success: false,
       fallback: true,
-      error: error?.message || String(error),
+      error: (error as Error)?.message ?? String(error),
     });
   }
 });

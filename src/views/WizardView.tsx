@@ -34,7 +34,8 @@ import {
 } from '../data/mockData';
 import {
   getInitialAiGreeting,
-  sendScopingMessage,
+  advanceScoping,
+  generateFinalProposal,
 } from '../services/aiScopingService';
 import { exportElementToPdf } from '../utils/pdfExport';
 import { exportToWord } from '../utils/exportWord';
@@ -233,7 +234,8 @@ export const WizardView: React.FC<WizardViewProps> = ({
     const history = updatedMessages.map((m) => ({ role: m.role, text: m.text }));
 
     try {
-      const res = await sendScopingMessage({
+      // Local: no request leaves the browser while the questionnaire runs.
+      const res = advanceScoping({
         config: {
           categoryKey: selectedCategory,
           categoryName: CATEGORIES_DATA.find((c) => c.key === selectedCategory)?.name || 'מבדק חוסן',
@@ -401,8 +403,45 @@ export const WizardView: React.FC<WizardViewProps> = ({
     };
   };
 
-  const handleFinish = () => {
-    onFinishWizard(buildQuote());
+  const [isComposing, setIsComposing] = useState(false);
+
+  /**
+   * The single model call of the whole flow. Everything the questionnaire
+   * gathered is sent once, here, and the returned summary goes onto the quote.
+   * If it is unavailable the locally composed summary is used instead, so
+   * finishing never depends on the network.
+   */
+  const handleFinish = async () => {
+    setIsComposing(true);
+    try {
+      const result = await generateFinalProposal({
+        config: {
+          categoryKey: selectedCategory,
+          categoryName: selectedCategoryName,
+          staging,
+          testType,
+          complexity,
+        },
+        template: selectedTemplate,
+        clientName,
+        targetSystem,
+        mandays: currentMandays,
+        dailyRate,
+        components: scopeComponents,
+        customRequirements,
+        scopeDetails,
+        transcript: chatMessages.map((m) => ({ role: m.role, text: m.text })),
+      });
+
+      const quote = buildQuote();
+      onFinishWizard({
+        ...quote,
+        summaryText: result.summary || quote.summaryText,
+        components: result.components.length ? result.components : quote.components,
+      });
+    } finally {
+      setIsComposing(false);
+    }
   };
 
   /** Persists the quote and keeps the user on the summary step. */
@@ -1557,6 +1596,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
 
             <button
               type="button"
+              disabled={isComposing}
               onClick={handleFinish}
               className="h-12 px-7 rounded-full font-bold text-sm text-[#04121f] bg-gradient-to-r from-[#2563eb] via-[#0ea5e9] to-[#22d3ee] shadow-[0_16px_36px_-14px_rgba(34,211,238,0.8)] hover:brightness-105 transition-all inline-flex items-center gap-2 cursor-pointer"
             >
