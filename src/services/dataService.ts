@@ -49,6 +49,8 @@ function rowToQuote(r: QuoteRow): Quote {
     beneficiaryName: r.beneficiary_name || undefined,
     paymentMethod: r.payment_method || undefined,
     quoteNotes: r.quote_notes || undefined,
+    createdAt: r.created_at || undefined,
+    updatedAt: r.updated_at || undefined,
   };
 }
 

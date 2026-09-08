@@ -196,6 +196,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           title={getUserGreeting(currentUser)}
           subtitle={`${currentUser?.organization || 'הארגון שלי'} · ${totalCount} הצעות במערכת · ${draftCount} טיוטות · ${approvedCount} אושרו`}
           onNewQuote={onNewQuote}
+          currentUser={currentUser}
+          quotes={quotes}
         />
       </div>
 

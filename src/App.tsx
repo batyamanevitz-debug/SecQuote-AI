@@ -675,6 +675,7 @@ export default function App() {
               currentUser={currentUser}
               onFinishWizard={handleFinishWizard}
               onSaveQuote={handleSaveQuoteInline}
+              quotes={quotes}
               onViewSowDocument={handleViewSow}
               onCancel={() => {
                 setSelectedQuoteForSow(null);
@@ -685,6 +686,7 @@ export default function App() {
 
           {currentView === 'market' && (
             <MarketView
+              quotes={quotes}
               currentUser={currentUser}
               onSaveRate={(rate) => handleSaveProfile({ dailyRate: rate }, [])}
             />

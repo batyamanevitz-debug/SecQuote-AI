@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Bell, Plus, Check, X, ShieldAlert, CheckCircle2, Clock } from 'lucide-react';
-import { UserItem } from '../types';
+import { UserItem, Quote } from '../types';
+import { buildNotifications } from '../utils/notifications';
 
 interface HeaderProps {
   title: string;
@@ -8,15 +9,20 @@ interface HeaderProps {
   showNewQuoteBtn?: boolean;
   onNewQuote?: () => void;
   currentUser?: UserItem | null;
+  /** Notifications are derived from these, so they describe real rows. */
+  quotes?: Quote[];
 }
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  time: string;
-  read: boolean;
-  type: 'success' | 'alert' | 'info';
-}
+/** Ids the user has already dismissed, kept per browser. */
+const READ_KEY = 'secquote_read_notifications';
+
+const loadRead = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(READ_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
 
 export const Header: React.FC<HeaderProps> = ({
   title,
@@ -24,43 +30,30 @@ export const Header: React.FC<HeaderProps> = ({
   showNewQuoteBtn = true,
   onNewQuote,
   currentUser,
+  quotes = [],
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: '1',
-      title: 'הצעת מחיר לבנק הפועלים (תשתיתי) נחתמה בהצלחה',
-      time: 'לפני 15 דקות',
-      read: false,
-      type: 'success',
-    },
-    {
-      id: '2',
-      title: 'מדד תעריף יומי מומלץ התעדכן ל-₪4,900 ליום עבודה',
-      time: 'לפני שעה',
-      read: false,
-      type: 'info',
-    },
-    {
-      id: '3',
-      title: 'תזכורת: טיוטת הצעת מחיר עבור Cybereason ממתינה לשליחה',
-      time: 'לפני 3 שעות',
-      read: true,
-      type: 'alert',
-    },
-  ]);
+  const [readIds, setReadIds] = useState<string[]>(loadRead);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Built from the account's own quotes rather than a fixed list.
+  const notifications = useMemo(
+    () => buildNotifications(quotes, currentUser),
+    [quotes, currentUser]
+  );
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const persistRead = (ids: string[]) => {
+    setReadIds(ids);
+    try {
+      localStorage.setItem(READ_KEY, JSON.stringify(ids));
+    } catch {
+      /* a full or blocked store just means the badge returns next visit */
+    }
   };
 
-  const markOneAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
+  const markAllAsRead = () => persistRead([...new Set([...readIds, ...notifications.map((n) => n.id)])]);
+  const markOneAsRead = (id: string) => persistRead([...new Set([...readIds, id])]);
+
+  const unreadCount = notifications.filter((n) => !readIds.includes(n.id)).length;
 
   return (
     <header className="relative z-30 flex items-center justify-between gap-3 sm:gap-4 select-none w-full">
@@ -135,12 +128,17 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
+                    {notifications.length === 0 && (
+                      <p className="py-6 text-center text-xs text-[#cbe1ff]/50">
+                        אין התראות חדשות.
+                      </p>
+                    )}
                     {notifications.map((n) => (
                       <div
                         key={n.id}
                         onClick={() => markOneAsRead(n.id)}
                         className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
-                          n.read
+                          readIds.includes(n.id)
                             ? 'bg-white/[0.02] border-white/[0.05] text-[#cbe1ff]/65'
                             : 'bg-[#22d3ee]/10 border-[#22d3ee]/30 text-[#f4f9ff]'
                         }`}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
-import { UserItem } from '../types';
+import { UserItem, Quote } from '../types';
 import { Header } from '../components/Header';
 import { MARKET_TIERS } from '../data/mockData';
 
@@ -15,9 +15,11 @@ const pctOf = (n: number) => ((n - MIN) / (MAX - MIN)) * 100;
 interface MarketViewProps {
   currentUser?: UserItem | null;
   onSaveRate?: (rate: number) => void;
+  /** Only used to populate the notification bell in the header. */
+  quotes?: Quote[];
 }
 
-export const MarketView: React.FC<MarketViewProps> = ({ currentUser, onSaveRate }) => {
+export const MarketView: React.FC<MarketViewProps> = ({ currentUser, onSaveRate, quotes = [] }) => {
   // Seeded from the saved profile rate so the screen reflects reality.
   const [rate, setRate] = useState<number>(currentUser?.dailyRate ?? MARKET_DEFAULT);
   const [saved, setSaved] = useState<boolean>(false);
@@ -54,6 +56,8 @@ export const MarketView: React.FC<MarketViewProps> = ({ currentUser, onSaveRate 
         <Header
           title="ניהול מדדי שוק ותעריפים"
           subtitle="Manday · עודכן לאחרונה ב-12/05/2024"
+          currentUser={currentUser}
+          quotes={quotes}
         />
       </div>
 

@@ -52,6 +52,9 @@ export interface Quote {
   sharedWithMe?: boolean;
   /** For a shared quote: whether the owner granted edit rights. */
   sharedCanEdit?: boolean;
+  /** ISO timestamps from the database, used for real notification times. */
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ChatMessage {
