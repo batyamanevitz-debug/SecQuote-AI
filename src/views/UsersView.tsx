@@ -5,6 +5,7 @@ import {
   Check,
   Pencil,
   KeyRound,
+  Share2,
   UserX,
   X,
   Building2,
@@ -60,6 +61,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   /** Quotes ticked for the member currently being added or edited. */
   const [sharedQuotes, setSharedQuotes] = useState<QuoteShare[]>([]);
+  /** The member whose quote access is open in the standalone share panel. */
+  const [shareTarget, setShareTarget] = useState<UserItem | null>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
 
@@ -155,6 +158,23 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setNewBeneficiaryName(u.beneficiaryName || fin.beneficiaryName);
     setSharedQuotes(sharesByEmail[(u.email || '').trim().toLowerCase()] || []);
     setIsModalOpen(true);
+  };
+
+  /** Shares already granted to a member, for the row badge and the panel. */
+  const sharesOf = (email: string): QuoteShare[] =>
+    sharesByEmail[(email || '').trim().toLowerCase()] || [];
+
+  const openShareModal = (u: UserItem) => {
+    setShareTarget(u);
+    setSharedQuotes(sharesOf(u.email));
+  };
+
+  const saveShareModal = () => {
+    if (shareTarget && onSetShares) {
+      onSetShares(shareTarget.email.trim().toLowerCase(), sharedQuotes);
+    }
+    setShareTarget(null);
+    setSharedQuotes([]);
   };
 
   const handleOrgChange = (org: string) => {
@@ -561,6 +581,17 @@ export const UsersView: React.FC<UsersViewProps> = ({
                       ) : null}
                     </div>
                     <div className="flex items-center gap-1">
+                      {u.id !== currentUser?.id && (
+                        <button
+                          type="button"
+                          onClick={() => openShareModal(u)}
+                          className="px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 text-xs font-bold text-[#67e8f9] bg-[#22d3ee]/12 border border-[#22d3ee]/30 hover:bg-[#22d3ee]/22 transition-colors cursor-pointer"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          שיתוף
+                          {sharesOf(u.email).length > 0 && ` (${sharesOf(u.email).length})`}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEditUserModal(u)}
@@ -751,6 +782,20 @@ export const UsersView: React.FC<UsersViewProps> = ({
                             <span>החלף לפרופיל זה</span>
                           </button>
                         ) : null}
+                        {u.id !== currentUser?.id && (
+                          <button
+                            type="button"
+                            title="בחר אילו הצעות מחיר המשתמש יראה"
+                            onClick={() => openShareModal(u)}
+                            className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-[11px] font-bold text-[#67e8f9] bg-[#22d3ee]/12 hover:bg-[#22d3ee]/22 border border-[#22d3ee]/30 transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                            <span>
+                              שיתוף הצעות
+                              {sharesOf(u.email).length > 0 && ` (${sharesOf(u.email).length})`}
+                            </span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           title="ערוך פרטים"
@@ -858,6 +903,165 @@ export const UsersView: React.FC<UsersViewProps> = ({
       )}
 
       {/* Add / Edit User Modal */}
+      {/* Standalone quote-sharing panel for one team member. */}
+      {shareTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl border border-[#22d3ee]/35 bg-gradient-to-br from-[#121c34] to-[#0a1020] p-5 sm:p-6 shadow-[0_30px_70px_rgba(0,0,0,0.8)] flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className="flex-none w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-[#04121f]"
+                  style={{ background: shareTarget.avatar || 'linear-gradient(140deg,#2563eb,#22d3ee)' }}
+                >
+                  {shareTarget.initials}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-[#f4f9ff] truncate">
+                    שיתוף הצעות מחיר עם {shareTarget.name}
+                  </h3>
+                  <p className="text-[11px] text-[#cbe1ff]/60 font-mono truncate">
+                    {shareTarget.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareTarget(null)}
+                aria-label="סגור"
+                className="flex-none p-1.5 rounded-lg text-[#cbe1ff]/60 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-[12px] text-[#cbe1ff]/65 leading-relaxed">
+              סמני אילו הצעות מחיר {shareTarget.name} יראה כשייכנס למערכת עם החשבון
+              שלו. לכל הצעה אפשר לבחור <strong className="text-[#7dd3fc]">צפייה</strong> או
+              גם <strong className="text-emerald-300">עריכה</strong>. מחיקה נשארת תמיד רק אצלך.
+            </p>
+
+            {quotes.length === 0 ? (
+              <p className="text-[12px] text-amber-300/85">
+                אין עדיין הצעות מחיר לשיתוף. צרי הצעה ואז תוכלי לשתף אותה.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSharedQuotes(quotes.map((q) => ({ quoteId: q.id, canEdit: false })))
+                    }
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
+                  >
+                    סמן הכל
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSharedQuotes([])}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
+                  >
+                    נקה הכל
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
+                  {quotes.map((q) => {
+                    const share = sharedQuotes.find((sh) => sh.quoteId === q.id);
+                    const checked = !!share;
+                    const setPermission = (canEdit: boolean) =>
+                      setSharedQuotes((prev) =>
+                        prev.map((sh) => (sh.quoteId === q.id ? { ...sh, canEdit } : sh))
+                      );
+                    return (
+                      <div
+                        key={q.id}
+                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
+                          checked
+                            ? 'bg-[#22d3ee]/15 border-[#22d3ee]/40'
+                            : 'bg-white/[0.03] border-white/[0.07]'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSharedQuotes((prev) =>
+                              checked
+                                ? prev.filter((sh) => sh.quoteId !== q.id)
+                                : [...prev, { quoteId: q.id, canEdit: false }]
+                            )
+                          }
+                          className="flex items-center gap-2.5 flex-1 min-w-0 text-right cursor-pointer"
+                        >
+                          <span
+                            className={`flex-none w-4 h-4 rounded-md border flex items-center justify-center ${
+                              checked ? 'bg-[#22d3ee] border-[#22d3ee]' : 'border-[#7dd3fc]/40'
+                            }`}
+                          >
+                            {checked && <Check className="w-3 h-3 text-[#04121f]" />}
+                          </span>
+                          <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#eaf4ff] truncate">
+                            {q.client}
+                          </span>
+                          <span className="flex-none text-[11px] text-[#7dd3fc]/70 font-mono">
+                            {q.cost}
+                          </span>
+                        </button>
+
+                        {checked && (
+                          <div className="flex-none flex items-center rounded-lg overflow-hidden border border-[#22d3ee]/30">
+                            <button
+                              type="button"
+                              onClick={() => setPermission(false)}
+                              className={`px-2.5 py-1 text-[10px] font-bold cursor-pointer transition-colors ${
+                                !share!.canEdit
+                                  ? 'bg-[#22d3ee] text-[#04121f]'
+                                  : 'text-[#cbe1ff]/70 hover:bg-white/10'
+                              }`}
+                            >
+                              צפייה
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPermission(true)}
+                              className={`px-2.5 py-1 text-[10px] font-bold cursor-pointer transition-colors ${
+                                share!.canEdit
+                                  ? 'bg-emerald-400 text-[#04121f]'
+                                  : 'text-[#cbe1ff]/70 hover:bg-white/10'
+                              }`}
+                            >
+                              עריכה
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShareTarget(null)}
+                className="flex-1 h-11 rounded-full text-sm font-semibold text-[#cbe1ff]/70 border border-[#7dd3fc]/20 hover:bg-white/5 cursor-pointer"
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={saveShareModal}
+                className="flex-1 h-11 rounded-full text-sm font-bold text-[#04121f] bg-gradient-to-r from-[#2563eb] to-[#22d3ee] hover:brightness-105 cursor-pointer"
+              >
+                שמור שיתוף
+                {sharedQuotes.length > 0 && ` (${sharedQuotes.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-md p-6 rounded-3xl border border-[#22d3ee]/35 bg-gradient-to-br from-[#121c34] to-[#0a1020] shadow-[0_30px_70px_rgba(0,0,0,0.8)] animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
