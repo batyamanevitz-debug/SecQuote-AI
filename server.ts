@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -13,43 +12,24 @@ const PORT = 3000;
 // The payload carries the whole questionnaire, so allow a little headroom.
 app.use(express.json({ limit: "1mb" }));
 
-/**
- * Two providers are supported; whichever key is present is used.
- * ANTHROPIC_API_KEY wins when both are set.
- *
- * Claude Haiku 4.5 is the current fast, low-cost model. Note for anyone
- * revisiting this: claude-3-haiku-20240307 was deprecated and retired on
- * 2026-04-19, so that id no longer works.
- */
-const CLAUDE_MODEL = "claude-haiku-4-5";
+/** Gemini Flash — fast and cheap. The first model that answers is used. */
 const GEMINI_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.8-flash"];
 
-let anthropic: Anthropic | null = null;
 let gemini: GoogleGenAI | null = null;
-
-function activeProvider(): "anthropic" | "gemini" | null {
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
-  if (process.env.GEMINI_API_KEY) return "gemini";
-  return null;
-}
-
-function getAnthropic(): Anthropic {
-  if (!anthropic) anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY as string });
-  return anthropic;
-}
-
-function getGemini(): GoogleGenAI {
-  if (!gemini) gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+function getGemini(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!gemini) gemini = new GoogleGenAI({ apiKey });
   return gemini;
 }
 
 app.get("/api/health", (req, res) => {
-  const provider = activeProvider();
+  const configured = !!getGemini();
   res.json({
     status: "ok",
-    provider: provider ?? "none (local summary)",
-    model: provider === "anthropic" ? CLAUDE_MODEL : provider === "gemini" ? GEMINI_MODELS[0] : null,
-    configured: !!provider,
+    provider: configured ? "gemini" : "none (local summary)",
+    model: configured ? GEMINI_MODELS[0] : null,
+    configured,
     time: new Date().toISOString(),
   });
 });
@@ -80,8 +60,7 @@ function buildPrompt(b: Record<string, unknown>): string {
 }
 
 /** Gemini can be busy on a given model; try the next before giving up. */
-async function callGemini(prompt: string): Promise<string | null> {
-  const client = getGemini();
+async function callGemini(client: GoogleGenAI, prompt: string): Promise<string | null> {
   for (const model of GEMINI_MODELS) {
     try {
       const response = await client.models.generateContent({
@@ -97,21 +76,6 @@ async function callGemini(prompt: string): Promise<string | null> {
   return null;
 }
 
-async function callClaude(prompt: string): Promise<string> {
-  const message = await getAnthropic().messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 2000,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: prompt }],
-  });
-  // content is a union — narrow before reading .text
-  let raw = "";
-  for (const b of message.content) {
-    if (b.type === "text") raw += b.text;
-  }
-  return raw;
-}
-
 /**
  * The single model call of the whole flow.
  *
@@ -120,19 +84,18 @@ async function callClaude(prompt: string): Promise<string> {
  * when the quote is produced, with everything that was collected.
  */
 app.post("/api/ai/proposal", async (req, res) => {
-  const provider = activeProvider();
-  if (!provider) {
-    // No key for either provider — the client composes the summary locally.
+  const client = getGemini();
+  if (!client) {
+    // No key configured — the client composes the summary locally.
     return res.status(200).json({
       success: false,
       fallback: true,
-      message: "No ANTHROPIC_API_KEY or GEMINI_API_KEY configured; using the local summary.",
+      message: "GEMINI_API_KEY not configured; using the local summary.",
     });
   }
 
   try {
-    const prompt = buildPrompt(req.body ?? {});
-    const raw = provider === "anthropic" ? await callClaude(prompt) : await callGemini(prompt);
+    const raw = await callGemini(client, buildPrompt(req.body ?? {}));
 
     if (!raw) {
       return res.status(200).json({ success: false, fallback: true, message: "Model returned nothing." });
@@ -150,7 +113,7 @@ app.post("/api/ai/proposal", async (req, res) => {
 
     return res.json({
       success: true,
-      provider,
+      provider: "gemini",
       summary: parsed.summary ?? cleaned,
       components: Array.isArray(parsed.components) ? parsed.components : req.body?.components,
     });
