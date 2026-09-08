@@ -456,7 +456,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
       {/* Pinned Top Header */}
       <div className="flex-none px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 bg-[#080d1c]/90 backdrop-blur-xl border-b border-[#7dd3fc]/15 z-20">
         <Header
-          title={isEditing ? `עריכת הצעת מחיר - ${initialQuote.client} (${initialQuote.id})` : 'אשף יצירת הצעת מחיר'}
+          title={isEditing ? `עריכת הצעת מחיר - ${initialQuote.client}` : 'אשף יצירת הצעת מחיר'}
           subtitle={`שלב ${step} מתוך 4 · ${stepsHeader[step - 1].label}${isEditing ? ' · במצב עריכה' : ''}`}
           currentUser={currentUser}
           quotes={quotes}
