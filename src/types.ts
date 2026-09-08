@@ -50,6 +50,8 @@ export interface Quote {
   quoteNotes?: string;
   /** True when this quote belongs to someone else and was shared with me. */
   sharedWithMe?: boolean;
+  /** For a shared quote: whether the owner granted edit rights. */
+  sharedCanEdit?: boolean;
 }
 
 export interface ChatMessage {

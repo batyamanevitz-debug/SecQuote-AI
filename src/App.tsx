@@ -59,8 +59,8 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState<boolean>(false);
-  /** quote ids this account shared out, keyed by lowercased member email. */
-  const [sharesByEmail, setSharesByEmail] = useState<Record<string, string[]>>({});
+  /** Shares this account granted, keyed by lowercased member email. */
+  const [sharesByEmail, setSharesByEmail] = useState<Record<string, db.QuoteShare[]>>({});
 
   const isDemo = mode === 'demo';
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -433,17 +433,18 @@ export default function App() {
   };
 
   /** Sets exactly which of my quotes a team member may open. */
-  const handleSetShares = async (memberEmail: string, quoteIds: string[]) => {
+  const handleSetShares = async (memberEmail: string, shares: db.QuoteShare[]) => {
     const email = memberEmail.trim().toLowerCase();
-    setSharesByEmail((prev) => ({ ...prev, [email]: quoteIds }));
+    setSharesByEmail((prev) => ({ ...prev, [email]: shares }));
 
     if (isDemo || !authUserId) return;
 
     try {
-      await db.setSharesForMember(authUserId, email, quoteIds);
+      await db.setSharesForMember(authUserId, email, shares);
+      const editors = shares.filter((sh) => sh.canEdit).length;
       showToast(
-        quoteIds.length
-          ? `${quoteIds.length} הצעות שותפו עם ${email} ✓`
+        shares.length
+          ? `${shares.length} הצעות שותפו עם ${email}${editors ? ` (${editors} בהרשאת עריכה)` : ''} ✓`
           : `הגישה של ${email} להצעות בוטלה ✓`
       );
     } catch (err) {

@@ -19,6 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 import { UserItem, AccessLevel, Quote } from '../types';
+import type { QuoteShare } from '../services/dataService';
 import { ACCESS_OPTIONS, getOrgFinancialDetails } from '../data/mockData';
 import { isHebrewFemaleName } from '../utils/greeting';
 
@@ -26,10 +27,10 @@ interface UsersViewProps {
   users: UserItem[];
   /** The owner's quotes, offered for sharing when editing a member. */
   quotes?: Quote[];
-  /** quote ids already shared, keyed by lowercased member email. */
-  sharesByEmail?: Record<string, string[]>;
-  /** Persists the exact set of quotes a member may see. */
-  onSetShares?: (memberEmail: string, quoteIds: string[]) => void;
+  /** Shares already granted, keyed by lowercased member email. */
+  sharesByEmail?: Record<string, QuoteShare[]>;
+  /** Persists the exact set of quotes a member may see, and at what permission. */
+  onSetShares?: (memberEmail: string, shares: QuoteShare[]) => void;
   onAddUser: (user: Omit<UserItem, 'id' | 'initials' | 'avatar' | 'joined'>) => void;
   onUpdateUser: (id: string, updates: Partial<UserItem>) => void;
   onDeleteUser?: (id: string) => void;
@@ -58,7 +59,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   /** Quotes ticked for the member currently being added or edited. */
-  const [sharedQuoteIds, setSharedQuoteIds] = useState<string[]>([]);
+  const [sharedQuotes, setSharedQuotes] = useState<QuoteShare[]>([]);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
 
@@ -135,7 +136,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setNewBeneficiaryName(defaultFin.beneficiaryName);
     setNewRole('Security Consultant');
     setNewAccess('edit');
-    setSharedQuoteIds([]);
+    setSharedQuotes([]);
     setIsModalOpen(true);
   };
 
@@ -152,7 +153,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setNewBranchNumber(u.branchNumber || fin.branchNumber);
     setNewBankAccountNumber(u.bankAccountNumber || fin.bankAccountNumber);
     setNewBeneficiaryName(u.beneficiaryName || fin.beneficiaryName);
-    setSharedQuoteIds(sharesByEmail[(u.email || '').trim().toLowerCase()] || []);
+    setSharedQuotes(sharesByEmail[(u.email || '').trim().toLowerCase()] || []);
     setIsModalOpen(true);
   };
 
@@ -197,7 +198,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
     // Access is granted against the email, so it applies whether or not this
     // person has registered yet.
-    if (onSetShares) onSetShares(newEmail.trim().toLowerCase(), sharedQuoteIds);
+    if (onSetShares) onSetShares(newEmail.trim().toLowerCase(), sharedQuotes);
     setNewName('');
     setNewEmail('');
     setNewOrg('');
@@ -1035,14 +1036,16 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setSharedQuoteIds(quotes.map((q) => q.id))}
+                        onClick={() =>
+                          setSharedQuotes(quotes.map((q) => ({ quoteId: q.id, canEdit: false })))
+                        }
                         className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
                       >
                         הכל
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSharedQuoteIds([])}
+                        onClick={() => setSharedQuotes([])}
                         className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white/[0.05] border border-[#7dd3fc]/20 text-[#cbe1ff]/80 hover:bg-white/10 cursor-pointer"
                       >
                         אף אחת
@@ -1052,8 +1055,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
                 </div>
 
                 <p className="text-[11px] text-[#cbe1ff]/50 leading-relaxed">
-                  המשתמש יראה את ההצעות המסומנות כשייכנס לחשבון שלו, לצפייה בלבד.
-                  עריכה ומחיקה נשארות רק אצלך.
+                  המשתמש יראה את ההצעות המסומנות כשייכנס לחשבון שלו. לכל הצעה אפשר
+                  לבחור צפייה בלבד או גם עריכה. מחיקה נשארת תמיד רק אצלך.
                 </p>
 
                 {quotes.length === 0 ? (
@@ -1063,38 +1066,75 @@ export const UsersView: React.FC<UsersViewProps> = ({
                 ) : (
                   <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
                     {quotes.map((q) => {
-                      const checked = sharedQuoteIds.includes(q.id);
+                      const share = sharedQuotes.find((sh) => sh.quoteId === q.id);
+                      const checked = !!share;
+                      const setPermission = (canEdit: boolean) =>
+                        setSharedQuotes((prev) =>
+                          prev.map((sh) => (sh.quoteId === q.id ? { ...sh, canEdit } : sh))
+                        );
+
                       return (
-                        <button
+                        <div
                           key={q.id}
-                          type="button"
-                          onClick={() =>
-                            setSharedQuoteIds((prev) =>
-                              prev.includes(q.id)
-                                ? prev.filter((x) => x !== q.id)
-                                : [...prev, q.id]
-                            )
-                          }
-                          className={`w-full flex items-center gap-2.5 p-2 rounded-xl border text-right transition-all cursor-pointer ${
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
                             checked
                               ? 'bg-[#22d3ee]/15 border-[#22d3ee]/40'
-                              : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]'
+                              : 'bg-white/[0.03] border-white/[0.07]'
                           }`}
                         >
-                          <span
-                            className={`flex-none w-4 h-4 rounded-md border flex items-center justify-center ${
-                              checked ? 'bg-[#22d3ee] border-[#22d3ee]' : 'border-[#7dd3fc]/40'
-                            }`}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSharedQuotes((prev) =>
+                                checked
+                                  ? prev.filter((sh) => sh.quoteId !== q.id)
+                                  : [...prev, { quoteId: q.id, canEdit: false }]
+                              )
+                            }
+                            className="flex items-center gap-2.5 flex-1 min-w-0 text-right cursor-pointer"
                           >
-                            {checked && <Check className="w-3 h-3 text-[#04121f]" />}
-                          </span>
-                          <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#eaf4ff] truncate">
-                            {q.client}
-                          </span>
-                          <span className="flex-none text-[11px] text-[#7dd3fc]/70 font-mono">
-                            {q.cost}
-                          </span>
-                        </button>
+                            <span
+                              className={`flex-none w-4 h-4 rounded-md border flex items-center justify-center ${
+                                checked ? 'bg-[#22d3ee] border-[#22d3ee]' : 'border-[#7dd3fc]/40'
+                              }`}
+                            >
+                              {checked && <Check className="w-3 h-3 text-[#04121f]" />}
+                            </span>
+                            <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#eaf4ff] truncate">
+                              {q.client}
+                            </span>
+                            <span className="flex-none text-[11px] text-[#7dd3fc]/70 font-mono">
+                              {q.cost}
+                            </span>
+                          </button>
+
+                          {checked && (
+                            <div className="flex-none flex items-center rounded-lg overflow-hidden border border-[#22d3ee]/30">
+                              <button
+                                type="button"
+                                onClick={() => setPermission(false)}
+                                className={`px-2 py-0.5 text-[10px] font-bold cursor-pointer transition-colors ${
+                                  !share!.canEdit
+                                    ? 'bg-[#22d3ee] text-[#04121f]'
+                                    : 'text-[#cbe1ff]/70 hover:bg-white/10'
+                                }`}
+                              >
+                                צפייה
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPermission(true)}
+                                className={`px-2 py-0.5 text-[10px] font-bold cursor-pointer transition-colors ${
+                                  share!.canEdit
+                                    ? 'bg-emerald-400 text-[#04121f]'
+                                    : 'text-[#cbe1ff]/70 hover:bg-white/10'
+                                }`}
+                              >
+                                עריכה
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>

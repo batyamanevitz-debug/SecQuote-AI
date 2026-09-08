@@ -105,9 +105,12 @@ export async function saveQuote(quote: Quote, userId: string): Promise<Quote> {
   const looksPersisted = isUuid(quote.id);
 
   if (looksPersisted) {
+    // user_id and share_token are not updatable (column privileges are revoked
+    // so a shared editor cannot take ownership), so they are dropped here.
+    const { user_id: _ownerId, ...updatable } = row;
     const { data, error } = await supabase
       .from('quotes')
-      .update(row)
+      .update(updatable)
       .eq('id', quote.id)
       .eq('user_id', userId)
       .select()
@@ -179,32 +182,45 @@ export async function approveSharedQuote(token: string): Promise<Quote | null> {
 
 /* --------------------------- quote sharing --------------------------- */
 
-/** Quote ids the owner has shared with this team member's email. */
+/** One quote a team member may open, and at what permission. */
+export interface QuoteShare {
+  quoteId: string;
+  canEdit: boolean;
+}
+
+/** Shares the owner granted to this team member's email. */
 export async function fetchSharesForMember(
   ownerId: string,
   memberEmail: string
-): Promise<string[]> {
+): Promise<QuoteShare[]> {
   const { data, error } = await supabase
     .from('quote_shares')
-    .select('quote_id')
+    .select('quote_id, can_edit')
     .eq('owner_id', ownerId)
     .eq('member_email', memberEmail.trim().toLowerCase());
   if (error) throw error;
-  return (data || []).map((r: { quote_id: string }) => r.quote_id);
+  return (data || []).map((r: { quote_id: string; can_edit: boolean }) => ({
+    quoteId: r.quote_id,
+    canEdit: !!r.can_edit,
+  }));
 }
 
 /** Every share this owner has granted, grouped by member email. */
 export async function fetchAllShares(
   ownerId: string
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, QuoteShare[]>> {
   const { data, error } = await supabase
     .from('quote_shares')
-    .select('quote_id, member_email')
+    .select('quote_id, member_email, can_edit')
     .eq('owner_id', ownerId);
   if (error) throw error;
-  const out: Record<string, string[]> = {};
-  for (const r of (data || []) as { quote_id: string; member_email: string }[]) {
-    (out[r.member_email] ||= []).push(r.quote_id);
+  const out: Record<string, QuoteShare[]> = {};
+  for (const r of (data || []) as {
+    quote_id: string;
+    member_email: string;
+    can_edit: boolean;
+  }[]) {
+    (out[r.member_email] ||= []).push({ quoteId: r.quote_id, canEdit: !!r.can_edit });
   }
   return out;
 }
@@ -216,19 +232,43 @@ export async function fetchAllShares(
 export async function setSharesForMember(
   ownerId: string,
   memberEmail: string,
-  quoteIds: string[]
+  shares: QuoteShare[]
 ): Promise<void> {
   const email = memberEmail.trim().toLowerCase();
   if (!email) return;
 
+  const wanted = shares.filter((sh) => isUuid(sh.quoteId));
   const current = await fetchSharesForMember(ownerId, email);
-  const toAdd = quoteIds.filter((id) => !current.includes(id) && isUuid(id));
-  const toRemove = current.filter((id) => !quoteIds.includes(id));
+  const currentIds = current.map((c) => c.quoteId);
+  const wantedIds = wanted.map((w) => w.quoteId);
+
+  const toAdd = wanted.filter((w) => !currentIds.includes(w.quoteId));
+  const toRemove = currentIds.filter((id) => !wantedIds.includes(id));
+  // Same quote, permission flipped between צפייה and עריכה.
+  const toFlip = wanted.filter((w) => {
+    const existing = current.find((c) => c.quoteId === w.quoteId);
+    return existing && existing.canEdit !== w.canEdit;
+  });
 
   if (toAdd.length) {
     const { error } = await supabase.from('quote_shares').insert(
-      toAdd.map((quote_id) => ({ quote_id, owner_id: ownerId, member_email: email }))
+      toAdd.map((sh) => ({
+        quote_id: sh.quoteId,
+        owner_id: ownerId,
+        member_email: email,
+        can_edit: sh.canEdit,
+      }))
     );
+    if (error) throw error;
+  }
+
+  for (const sh of toFlip) {
+    const { error } = await supabase
+      .from('quote_shares')
+      .update({ can_edit: sh.canEdit })
+      .eq('owner_id', ownerId)
+      .eq('member_email', email)
+      .eq('quote_id', sh.quoteId);
     if (error) throw error;
   }
 
@@ -253,16 +293,24 @@ export async function fetchQuotesSharedWithMe(myEmail: string): Promise<Quote[]>
 
   const { data: shares, error: shareErr } = await supabase
     .from('quote_shares')
-    .select('quote_id')
+    .select('quote_id, can_edit')
     .eq('member_email', email);
   if (shareErr) throw shareErr;
 
-  const ids = (shares || []).map((r: { quote_id: string }) => r.quote_id);
-  if (!ids.length) return [];
+  const rows = (shares || []) as { quote_id: string; can_edit: boolean }[];
+  if (!rows.length) return [];
 
-  const { data, error } = await supabase.from('quotes').select('*').in('id', ids);
+  const editable = new Map(rows.map((r) => [r.quote_id, !!r.can_edit]));
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('*')
+    .in('id', [...editable.keys()]);
   if (error) throw error;
-  return (data || []).map(rowToQuote).map((q) => ({ ...q, sharedWithMe: true }));
+  return (data || []).map(rowToQuote).map((q) => ({
+    ...q,
+    sharedWithMe: true,
+    sharedCanEdit: editable.get(q.id) === true,
+  }));
 }
 
 /* ------------------------------ profile ------------------------------ */

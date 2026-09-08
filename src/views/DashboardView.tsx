@@ -621,8 +621,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {/* Mobile Actions Toolbar */}
                   {row.sharedWithMe ? (
                     <div className="pt-0.5 flex items-center gap-2 text-[11px] text-[#7dd3fc]/80">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>הצעה ששותפה איתך · צפייה בלבד</span>
+                      {row.sharedCanEdit ? (
+                        <Pencil className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {row.sharedCanEdit
+                          ? 'הצעה ששותפה איתך · ניתנת לעריכה'
+                          : 'הצעה ששותפה איתך · צפייה בלבד'}
+                      </span>
+                      {row.sharedCanEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEditQuote(row)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-400/15 border border-emerald-400/35 text-emerald-300 font-bold cursor-pointer"
+                        >
+                          ערוך
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onViewSow(row)}
@@ -790,10 +807,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Actions */}
                     {row.sharedWithMe ? (
                       <div className="flex items-center justify-end gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#22d3ee]/10 text-[#7dd3fc] border border-[#22d3ee]/25">
-                          <Eye className="w-3.5 h-3.5" />
-                          צפייה בלבד
+                        <span
+                          className={
+                            row.sharedCanEdit
+                              ? 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-400/10 text-emerald-300 border border-emerald-400/25'
+                              : 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#22d3ee]/10 text-[#7dd3fc] border border-[#22d3ee]/25'
+                          }
+                        >
+                          {row.sharedCanEdit ? (
+                            <Pencil className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
+                          {row.sharedCanEdit ? 'שותף · עריכה' : 'צפייה בלבד'}
                         </span>
+                        {row.sharedCanEdit && (
+                          <button
+                            type="button"
+                            title="ערוך הצעה משותפת"
+                            onClick={() => onEditQuote(row)}
+                            className="cursor-pointer w-8 h-8 rounded-lg flex items-center justify-center text-emerald-300 hover:bg-emerald-400/15 border border-transparent hover:border-emerald-400/35 transition-all"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           title="פתח מסמך"
