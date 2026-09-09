@@ -27,6 +27,8 @@ export interface AiScopingResponse {
     criticalSystems?: string;
   };
   components?: ScopeComponent[];
+  /** The question this turn answered, so the wizard can keep the pair. */
+  answeredQuestion?: string | null;
   /** 1-based index of the question just asked. */
   questionNumber?: number;
   /** How many questions this template plans to ask. */
@@ -452,6 +454,7 @@ function runLocalIntelligentScopingEngine(params: {
       detectedClientName,
       detectedTargetSystem,
       scopeDetails,
+      answeredQuestion: answeredQuestion?.text ?? null,
       components: updatedComponents,
       questionNumber: askedNumber,
       questionTotal: total,
@@ -472,6 +475,7 @@ function runLocalIntelligentScopingEngine(params: {
     detectedClientName,
     detectedTargetSystem,
     scopeDetails,
+    answeredQuestion: answeredQuestion?.text ?? null,
     components: updatedComponents,
     isComplete: true,
     proposal: {

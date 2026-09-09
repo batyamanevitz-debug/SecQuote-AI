@@ -23,6 +23,11 @@ export interface ClientApproval {
   approvedAt?: string;
 }
 
+export interface ScopeAnswer {
+  question: string;
+  answer: string;
+}
+
 export interface Quote {
   id: string;
   /** Secret token behind the public client link (?doc=<shareToken>). */
@@ -43,6 +48,8 @@ export interface Quote {
   testType?: string;
   complexity?: string;
   targetSystem?: string;
+  /** Every question asked in the chat and what was answered to it. */
+  scopeAnswers?: ScopeAnswer[];
   scopeDetails?: {
     environment?: string;
     roles?: string;

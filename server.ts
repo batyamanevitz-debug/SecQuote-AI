@@ -17,8 +17,11 @@ const GEMINI_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3
 
 let gemini: GoogleGenAI | null = null;
 function getGemini(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  // A real key is ~39 characters. Anything shorter is a leftover placeholder
+  // such as "AIza..." — treat it as unset rather than reporting "configured"
+  // and then failing on the first call.
+  if (!apiKey || apiKey.length < 20) return null;
   if (!gemini) gemini = new GoogleGenAI({ apiKey });
   return gemini;
 }

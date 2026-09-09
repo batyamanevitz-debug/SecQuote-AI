@@ -166,6 +166,11 @@
   .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: minmax(0, 1fr) 3.5rem !important; }
   .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 1.5rem 5rem minmax(0, 1fr) !important; }
 
+  /* The question/answer table reads badly in two narrow columns on a phone;
+     stack each pair instead. */
+  .sq-doc .sq-qa [class*="grid-cols-"] { grid-template-columns: 1fr !important; }
+  .sq-doc .sq-qa [class*="grid-cols-"] > div:first-child { border-left: 0 !important; border-bottom: 1px solid #e2e8f0 !important; }
+
   /* Long unbroken strings (URLs, system names) would otherwise widen a
      track past the page edge. */
   .sq-doc .pdf-page { overflow-wrap: anywhere; }

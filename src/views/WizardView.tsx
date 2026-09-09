@@ -24,7 +24,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { Header } from '../components/Header';
-import { Quote, ProjectTemplate, ScopeComponent, ChatMessage, UserItem } from '../types';
+import { Quote, ProjectTemplate, ScopeComponent, ChatMessage, UserItem, ScopeAnswer } from '../types';
 import {
   CATEGORIES_DATA,
   TEST_TYPES,
@@ -159,6 +159,9 @@ export const WizardView: React.FC<WizardViewProps> = ({
 
   const [clientName, setClientName] = useState<string>(initialQuote?.client || '');
   const [targetSystem, setTargetSystem] = useState<string>(initialQuote?.targetSystem || '');
+  const [scopeAnswers, setScopeAnswers] = useState<ScopeAnswer[]>(
+    initialQuote?.scopeAnswers || []
+  );
   const [scopeDetails, setScopeDetails] = useState<{
     environment?: string;
     roles?: string;
@@ -251,6 +254,19 @@ export const WizardView: React.FC<WizardViewProps> = ({
         customRequirements,
         dailyRate,
       });
+
+      // Keep every answer, not just the ones a keyword rule happened to catch:
+      // the whole pair goes onto the quote and is printed in the document.
+      const strippedQuestion = (res.answeredQuestion || '').split('**').join('').trim();
+      if (strippedQuestion && userText.trim()) {
+        setScopeAnswers((prev) =>
+          prev.some((p) => p.question === strippedQuestion)
+            ? prev.map((p) =>
+                p.question === strippedQuestion ? { ...p, answer: userText.trim() } : p
+              )
+            : [...prev, { question: strippedQuestion, answer: userText.trim() }]
+        );
+      }
 
       if (res.detectedClientName) {
         setClientName(res.detectedClientName);
@@ -390,6 +406,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
       complexity: complexity,
       targetSystem: targetSystem,
       scopeDetails: scopeDetails,
+      scopeAnswers: scopeAnswers,
       organizationName: displayOrgName,
       authorName: authorName,
       authorEmail: authorEmail,
@@ -1368,6 +1385,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
                     components={scopeComponents}
                     targetSystem={targetSystem}
                     customRequirements={customRequirements}
+                    scopeAnswers={scopeAnswers}
                     scopeDetails={scopeDetails}
                     activePage={previewPage}
                     editableClientName={true}
@@ -1400,6 +1418,7 @@ export const WizardView: React.FC<WizardViewProps> = ({
                     components={scopeComponents}
                     targetSystem={targetSystem}
                     customRequirements={customRequirements}
+                    scopeAnswers={scopeAnswers}
                     scopeDetails={scopeDetails}
                     activePage={0}
                     editableClientName={false}

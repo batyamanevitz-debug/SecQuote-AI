@@ -1,5 +1,5 @@
 import React from 'react';
-import { Quote, ScopeComponent, ClientApproval } from '../types';
+import { Quote, ScopeComponent, ClientApproval, ScopeAnswer } from '../types';
 import { SignaturePad } from './SignaturePad';
 import { getOrgFinancialDetails } from '../data/mockData';
 
@@ -16,6 +16,7 @@ export interface ElixSowDocumentProps {
   components?: ScopeComponent[];
   targetSystem?: string;
   customRequirements?: string[];
+  scopeAnswers?: ScopeAnswer[];
   chatSummary?: string;
   scopeDetails?: {
     environment?: string;
@@ -56,6 +57,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   components: propComponents,
   targetSystem: propTargetSystem,
   customRequirements: propCustomRequirements,
+  scopeAnswers: propScopeAnswers,
   chatSummary: propChatSummary,
   scopeDetails: propScopeDetails,
   activePage = 0,
@@ -82,6 +84,7 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
   const mandays = propMandays ?? quote?.mandays ?? 3;
   const components = propComponents || quote?.components || [];
   const customRequirements = propCustomRequirements || quote?.customRequirements || [];
+  const scopeAnswers = propScopeAnswers || quote?.scopeAnswers || [];
   const chatSummary = propChatSummary || quote?.summaryText || '';
   const scopeDetails = propScopeDetails || quote?.scopeDetails || {};
   const rawTotalCost = propTotalCost ?? quote?.rawCost ?? (mandays * dailyRate);
@@ -386,6 +389,37 @@ export const ElixSowDocument: React.FC<ElixSowDocumentProps> = ({
               </div>
             </div>
           </div>
+
+
+          {/* Every answer given in the scoping chat, verbatim. */}
+          {scopeAnswers.length > 0 && (
+            <div className="mb-5 text-right">
+              <h2 className="text-[#0d6282] font-bold text-lg mb-2 text-right">
+                פירוט האפיון שנמסר
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-2 text-right">
+                להלן הנתונים שנמסרו על ידי הלקוח בתהליך האפיון, ועל בסיסם נבנתה הצעה זו.
+              </p>
+              <div className="sq-qa border border-slate-300 overflow-hidden text-xs sm:text-sm" dir="rtl">
+                <div className="bg-[#0d6282] h-3.5 w-full"></div>
+                {scopeAnswers.map((qa, i) => (
+                  <div
+                    key={i}
+                    className={`grid grid-cols-[1fr_180px] ${
+                      i < scopeAnswers.length - 1 ? 'border-b border-slate-200' : ''
+                    }`}
+                  >
+                    <div className="p-2.5 bg-slate-50 border-l border-slate-200 font-bold text-slate-700 text-right">
+                      {qa.question}
+                    </div>
+                    <div className="p-2.5 text-slate-900 font-semibold text-right">
+                      {qa.answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* תכולת הבדיקות */}
           <div className="mb-4 text-right">
