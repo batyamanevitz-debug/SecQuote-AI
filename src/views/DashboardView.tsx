@@ -202,7 +202,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 lg:pb-8">
+      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 sm:pb-28 md:pb-28 lg:pb-8">
         {/* Personal area: identity, billing details reused on every quote,
             and the free text the user wants appended to proposals. */}
         <PersonalArea

@@ -268,7 +268,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 lg:pb-8">
+      <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 sm:pb-28 md:pb-28 lg:pb-8">
         {/* Dynamic Metric Stat Cards */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
           {/* Total Users */}

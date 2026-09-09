@@ -134,11 +134,11 @@
   /* Fixed label columns take too large a share once the page is narrow. */
   .sq-doc [class*="grid-cols-[140px"],
   .sq-doc [class*="grid-cols-[160px"] {
-    grid-template-columns: 7.5rem 1fr !important;
+    grid-template-columns: 7.5rem minmax(0, 1fr) !important;
   }
-  .sq-doc [class*="grid-cols-[1fr_180px"] { grid-template-columns: 1fr 7.5rem !important; }
-  .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: 1fr 4.5rem !important; }
-  .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 2rem 7rem 1fr !important; }
+  .sq-doc [class*="grid-cols-[1fr_180px"] { grid-template-columns: minmax(0, 1fr) 7.5rem !important; }
+  .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: minmax(0, 1fr) 4.5rem !important; }
+  .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 2rem 7rem minmax(0, 1fr) !important; }
 
   .sq-doc .pdf-page .py-12 { padding-block: 2rem !important; }
 }
@@ -160,11 +160,15 @@
 
   .sq-doc [class*="grid-cols-[140px"],
   .sq-doc [class*="grid-cols-[160px"] {
-    grid-template-columns: 5.5rem 1fr !important;
+    grid-template-columns: 5.5rem minmax(0, 1fr) !important;
   }
-  .sq-doc [class*="grid-cols-[1fr_180px"] { grid-template-columns: 1fr 5.5rem !important; }
-  .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: 1fr 3.5rem !important; }
-  .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 1.5rem 5rem 1fr !important; }
+  .sq-doc [class*="grid-cols-[1fr_180px"] { grid-template-columns: minmax(0, 1fr) 5.5rem !important; }
+  .sq-doc [class*="grid-cols-[1fr_90px"]  { grid-template-columns: minmax(0, 1fr) 3.5rem !important; }
+  .sq-doc [class*="grid-cols-[40px_160px"] { grid-template-columns: 1.5rem 5rem minmax(0, 1fr) !important; }
+
+  /* Long unbroken strings (URLs, system names) would otherwise widen a
+     track past the page edge. */
+  .sq-doc .pdf-page { overflow-wrap: anywhere; }
 
   /* Tighten cells so values are not forced onto three lines. */
   .sq-doc .pdf-page [class*="grid-cols-"] > div { padding: 0.45rem !important; }

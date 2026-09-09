@@ -634,9 +634,13 @@ export default function App() {
       dir="rtl"
       className="relative flex h-screen w-full overflow-hidden bg-[radial-gradient(1100px_620px_at_88%_-4%,#12203f_0%,rgba(18,32,63,0)_62%),linear-gradient(160deg,#0f172a_0%,#080d1c_52%,#070b19_100%)] font-['Heebo',system-ui,sans-serif] text-[#e8f2ff]"
     >
-      {/* Ambient background glowing orbs */}
-      <div className="absolute -top-40 -left-36 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.22)_0%,rgba(37,99,235,0)_70%)] blur-[50px] animate-sq-float pointer-events-none" />
-      <div className="absolute -bottom-52 left-1/4 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.14)_0%,rgba(34,211,238,0)_72%)] blur-[60px] animate-sq-float-reverse pointer-events-none" />
+      {/* Ambient background glowing orbs. Wrapped in their own clipping
+          layer: they overhang the container, and in RTL that overhang
+          extends the scrollable width and shifts the whole page sideways. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -left-36 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.22)_0%,rgba(37,99,235,0)_70%)] blur-[50px] animate-sq-float pointer-events-none" />
+        <div className="absolute -bottom-52 left-1/4 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.14)_0%,rgba(34,211,238,0)_72%)] blur-[60px] animate-sq-float-reverse pointer-events-none" />
+      </div>
 
       <Sidebar
         currentView={currentView}
