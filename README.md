@@ -31,6 +31,15 @@ GEMINI_API_KEY=""
   אחת בלבד יוצאת ל-Gemini Flash בעת הפקת ההצעה. בלי מפתח הסיכום מנוסח
   מקומית וההצעה נוצרת כרגיל.
 
+כדי להפעיל את Gemini בלי לערוך את הקובץ ידנית:
+
+```
+npm run gemini <המפתח>     # מפתח מ-https://aistudio.google.com/apikey
+npm run gemini -- --off    # כיבוי, חזרה לסיכום המקומי
+```
+
+ולאחר מכן `npm run dev`. בדיקה: `/api/health` יראה `"provider": "gemini"`.
+
 ## מבנה הנתונים (Supabase)
 
 | טבלה | תוכן | הרשאות |
